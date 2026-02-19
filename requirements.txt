@@ -1,2 +1,9 @@
 streamlit
 pdfplumber
+python-docx
+textblob
+plotly
+fpdf
+numpy
+scikit-learn
+nltk
