@@ -2,7 +2,6 @@ import re
 import pdfplumber
 import docx
 
-
 def extract_text_from_pdf(file):
     text = ""
     with pdfplumber.open(file) as pdf:
@@ -12,21 +11,17 @@ def extract_text_from_pdf(file):
                 text += extracted + "\n"
     return text
 
-
 def extract_text_from_docx(file):
     doc = docx.Document(file)
     return "\n".join([para.text for para in doc.paragraphs])
 
-
 def clean_text(text):
     """Aggressive cleaning: fix hyphenation, remove page noise, normalize whitespace."""
-    # Fix hyphenated line breaks (e.g. "algo-\nrithm" → "algorithm")
+
     text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)
 
-    # Remove page numbers (standalone digits on a line)
     text = re.sub(r'\n\s*\d{1,3}\s*\n', '\n', text)
 
-    # Remove repeated short header/footer lines (lines < 30 chars appearing 3+ times)
     lines = text.split('\n')
     line_counts = {}
     for line in lines:
@@ -38,10 +33,8 @@ def clean_text(text):
     cleaned_lines = [line for line in lines if line.strip() not in noise_lines]
     text = '\n'.join(cleaned_lines)
 
-    # Collapse multiple blank lines into one
     text = re.sub(r'\n{3,}', '\n\n', text)
 
-    # Normalize whitespace within lines
     text = re.sub(r'[ \t]+', ' ', text)
 
     return text.strip()

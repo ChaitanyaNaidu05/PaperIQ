@@ -12,7 +12,6 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     c = conn.cursor()
-    
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,7 +22,6 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
     c.execute('''
         CREATE TABLE IF NOT EXISTS analysis_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +34,10 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
-    
+    try:
+        c.execute('ALTER TABLE analysis_history ADD COLUMN results_json TEXT')
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
@@ -63,18 +64,16 @@ def get_user_by_username(username):
     conn.close()
     return user
 
-def save_analysis(user_id, filename, sections_count, keywords, sections_data):
+def save_analysis(user_id, filename, sections_count, keywords, sections_data, results_data):
     conn = get_db_connection()
     c = conn.cursor()
-    
     keywords_json = json.dumps(keywords)
     sections_json = json.dumps(sections_data)
-    
+    results_json = json.dumps(results_data)
     c.execute('''
-        INSERT INTO analysis_history (user_id, filename, sections_count, keywords_json, sections_json)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (user_id, filename, sections_count, keywords_json, sections_json))
-    
+        INSERT INTO analysis_history (user_id, filename, sections_count, keywords_json, sections_json, results_json)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (user_id, filename, sections_count, keywords_json, sections_json, results_json))
     conn.commit()
     conn.close()
 

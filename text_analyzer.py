@@ -17,14 +17,12 @@ from nltk.corpus import stopwords
 
 STOP_WORDS = set(stopwords.words('english'))
 
-# ─── Canonical section names for structural completeness ───
 CANONICAL_SECTIONS = [
     "Abstract", "Introduction", "Literature Review", "Related Work",
     "Methodology", "Methods", "Experiment", "Results",
     "Discussion", "Conclusion", "References"
 ]
 
-# ─── Domain keyword banks for classification ───
 DOMAIN_KEYWORDS = {
     "Computer Science": [
         "algorithm", "neural", "network", "machine learning", "deep learning",
@@ -54,11 +52,6 @@ DOMAIN_KEYWORDS = {
     ],
 }
 
-
-# ═══════════════════════════════════════════════════════════
-# SECTION EXTRACTION (improved)
-# ═══════════════════════════════════════════════════════════
-
 def extract_sections(text):
     """Extract sections with improved boundary detection."""
     lines = text.split('\n')
@@ -78,16 +71,15 @@ def extract_sections(text):
             continue
         is_header = False
 
-        # Numbered section like "3. Methodology" or "3.1 Data Collection"
         if re.match(r'^\d+(\.\d+)*\.?\s+[A-Za-z]', line) and len(line) < 80:
             is_header = True
-        # ALL CAPS short text
+
         elif line.isupper() and 3 < len(line) < 50:
             is_header = True
-        # Known section headers (case-insensitive)
+
         elif line.lower().rstrip(':') in common_headers_lower:
             is_header = True
-        # Roman numeral headers like "II. Related Work"
+
         elif re.match(r'^[IVXLC]+\.?\s+[A-Za-z]', line) and len(line) < 60:
             is_header = True
 
@@ -104,18 +96,12 @@ def extract_sections(text):
 
     return sections
 
-
-# ═══════════════════════════════════════════════════════════
-# READABILITY
-# ═══════════════════════════════════════════════════════════
-
 def _count_syllables(word):
     """Estimate syllable count using vowel groups."""
     word = word.lower().rstrip('e')
     vowels = re.findall(r'[aeiouy]+', word)
     count = len(vowels)
     return max(1, count)
-
 
 def calculate_readability(text):
     """Flesch Reading Ease with proper syllable counting."""
@@ -130,17 +116,12 @@ def calculate_readability(text):
     score = 206.835 - 1.015 * (word_count / sentence_count) - 84.6 * (total_syllables / word_count)
     return max(0, min(100, round(score, 2)))
 
-
-# ═══════════════════════════════════════════════════════════
-# NEW METRICS
-# ═══════════════════════════════════════════════════════════
-
 def calculate_citation_density(text):
     """Count citation patterns per 1000 words."""
     word_count = len(text.split())
     if word_count == 0:
         return 0.0, 0
-    # Match [1], [23], [1,2], (Author, 2020), et al.
+
     bracket_cites = len(re.findall(r'\[\d+(?:[,;\s]+\d+)*\]', text))
     author_cites = len(re.findall(r'\([A-Z][a-z]+(?:\s+(?:and|&)\s+[A-Z][a-z]+)*,?\s*\d{4}\)', text))
     etal_cites = len(re.findall(r'et\s+al\.', text, re.IGNORECASE))
@@ -148,24 +129,21 @@ def calculate_citation_density(text):
     density = round((total_cites / word_count) * 1000, 2)
     return density, total_cites
 
-
 def calculate_technical_depth(text, words):
     """Score technical depth based on long domain words and math tokens."""
     word_count = len(words)
     if word_count == 0:
         return 0.0
-    # Domain-specific long words (>8 chars, not stopwords)
+
     domain_words = [w for w in words if len(w) > 8 and w.lower() not in STOP_WORDS]
     domain_ratio = len(domain_words) / word_count
 
-    # Math-like tokens
     math_tokens = len(re.findall(r'[=∑∏∫α-ωΑ-Ω±≈≠≤≥∞√∂∇⊕⊗∈∉⊂⊃∀∃]', text))
     formula_patterns = len(re.findall(r'\b\w+\s*[=<>≈]\s*\w+', text))
     math_signal = min(1.0, (math_tokens + formula_patterns) / max(1, word_count) * 50)
 
     score = min(100, (domain_ratio * 200) + (math_signal * 40) + 15)
     return round(score, 2)
-
 
 def calculate_novelty_signal(text):
     """Detect phrases indicating novel contributions."""
@@ -185,7 +163,6 @@ def calculate_novelty_signal(text):
     score = min(100, density * 12 + 10)
     return round(score, 2), total_matches
 
-
 def calculate_structural_completeness(sections):
     """Check which canonical sections are present."""
     found = []
@@ -203,7 +180,6 @@ def calculate_structural_completeness(sections):
     score = round((len(found) / len(CANONICAL_SECTIONS)) * 100, 2)
     return score, found, missing
 
-
 def calculate_vocabulary_richness(words):
     """Type-Token Ratio and Hapax Legomena ratio."""
     if not words:
@@ -215,15 +191,12 @@ def calculate_vocabulary_richness(words):
     unique = len(set(lower_words))
     ttr = unique / total
 
-    # Hapax legomena: words appearing exactly once
     freq = Counter(lower_words)
     hapax = sum(1 for count in freq.values() if count == 1)
     hapax_ratio = hapax / total
 
-    # Normalized score (TTR alone drops with length, so blend with hapax)
     score = min(100, (ttr * 60 + hapax_ratio * 40) * 100)
     return round(score, 2), round(ttr, 4)
-
 
 def classify_sentence_complexity(sentences):
     """Bucket sentences into simple/medium/complex by word count."""
@@ -249,7 +222,6 @@ def classify_sentence_complexity(sentences):
         "complex_pct": round(complex_count / total * 100, 1),
     }
 
-
 def detect_domain(text):
     """Heuristic domain classification using keyword banks."""
     text_lower = text.lower()
@@ -261,11 +233,6 @@ def detect_domain(text):
     if domain_scores[best] < 3:
         return "General / Interdisciplinary", domain_scores
     return best, domain_scores
-
-
-# ═══════════════════════════════════════════════════════════
-# TF-IDF KEYWORD EXTRACTION
-# ═══════════════════════════════════════════════════════════
 
 def extract_keywords_tfidf(text, top_n=15):
     """Extract top keywords using TF-IDF on sentence-level documents."""
@@ -290,11 +257,6 @@ def extract_keywords_tfidf(text, top_n=15):
     except Exception:
         return []
 
-
-# ═══════════════════════════════════════════════════════════
-# BETTER EXTRACTIVE SUMMARIZATION
-# ═══════════════════════════════════════════════════════════
-
 def extractive_summarize(text, num_sentences=None):
     """
     Improved extractive summarization with:
@@ -310,7 +272,6 @@ def extractive_summarize(text, num_sentences=None):
 
     total_sents = len(sentences)
 
-    # Adaptive length if not specified
     if num_sentences is None:
         if total_sents <= 5:
             num_sentences = min(2, total_sents)
@@ -320,7 +281,6 @@ def extractive_summarize(text, num_sentences=None):
             num_sentences = 6
     num_sentences = min(num_sentences, total_sents)
 
-    # TF-IDF word scoring (stop-word filtered)
     content_words = [w.lower() for w in re.findall(r'\b[a-z]{3,}\b', text.lower())
                      if w.lower() not in STOP_WORDS]
     if not content_words:
@@ -329,19 +289,16 @@ def extractive_summarize(text, num_sentences=None):
     freq = Counter(content_words)
     max_freq = max(freq.values())
     for w in freq:
-        freq[w] = freq[w] / max_freq  # normalize
+        freq[w] = freq[w] / max_freq
 
-    # Score each sentence
     scored = []
     for i, sentence in enumerate(sentences):
         words_in_sent = [w.lower() for w in sentence.words if w.lower() not in STOP_WORDS]
         word_score = sum(freq.get(w, 0) for w in words_in_sent)
 
-        # Length normalization
         if len(words_in_sent) > 0:
             word_score /= len(words_in_sent)
 
-        # Positional bias: boost first 2 and last 2 sentences
         if i < 2:
             word_score *= 1.3
         elif i >= total_sents - 2:
@@ -349,15 +306,13 @@ def extractive_summarize(text, num_sentences=None):
 
         scored.append((word_score, i, sentence.raw))
 
-    # Get top candidates (2x desired to allow deduplication)
     candidates = heapq.nlargest(num_sentences * 2, scored, key=lambda x: x[0])
 
-    # Deduplicate using cosine similarity
     selected = []
     for score, idx, raw in candidates:
         if len(selected) >= num_sentences:
             break
-        # Check similarity with already selected sentences
+
         is_duplicate = False
         for _, _, existing_raw in selected:
             similarity = _sentence_similarity(raw, existing_raw)
@@ -367,10 +322,8 @@ def extractive_summarize(text, num_sentences=None):
         if not is_duplicate:
             selected.append((score, idx, raw))
 
-    # Sort by original position for coherent reading
     selected.sort(key=lambda x: x[1])
     return " ".join(s[2] for s in selected)
-
 
 def _sentence_similarity(s1, s2):
     """Quick cosine similarity between two sentences based on word overlap."""
@@ -381,11 +334,6 @@ def _sentence_similarity(s1, s2):
     intersection = words1 & words2
     union = words1 | words2
     return len(intersection) / len(union)
-
-
-# ═══════════════════════════════════════════════════════════
-# FULL DOCUMENT ANALYSIS (enhanced)
-# ═══════════════════════════════════════════════════════════
 
 def analyze_full_document(text):
     """Comprehensive analysis with original + new metrics."""
@@ -401,7 +349,6 @@ def analyze_full_document(text):
     avg_word_len = np.mean([len(w) for w in words])
     sentiment = blob.sentiment.polarity
 
-    # ── Original 5 scores (improved formulas) ──
     language_score = min(100, (avg_sentence_len * 1.5) + (avg_word_len * 5) + (50 + sentiment * 20))
     language_score = round(max(0, language_score), 2)
 
@@ -420,7 +367,6 @@ def analyze_full_document(text):
 
     readability_score = calculate_readability(text)
 
-    # ── New metrics ──
     sections = extract_sections(text)
     citation_density, total_citations = calculate_citation_density(text)
     citation_score = round(min(100, citation_density * 8 + 10), 2)
@@ -433,10 +379,8 @@ def analyze_full_document(text):
     domain, domain_scores = detect_domain(text)
     keywords = extract_keywords_tfidf(text)
 
-    # ── Overall document summary ──
     document_summary = extractive_summarize(text)
 
-    # ── Composite score (weighted across all metrics) ──
     final_score = round(
         (language_score * 0.15) +
         (coherence_score * 0.12) +
@@ -491,18 +435,13 @@ def analyze_full_document(text):
         "blob": blob,
     }
 
-
-# ═══════════════════════════════════════════════════════════
-# VISUALIZATIONS
-# ═══════════════════════════════════════════════════════════
-
 def build_radar_chart(scores):
     """10-axis radar chart for all metrics."""
     categories = [k for k in scores if k != "Composite"]
     values = [scores[c] for c in categories]
     fig = go.Figure()
     fig.add_trace(go.Scatterpolar(
-        r=values + [values[0]],  # close the polygon
+        r=values + [values[0]],
         theta=categories + [categories[0]],
         fill='toself',
         fillcolor='rgba(99,110,250,0.25)',
@@ -519,7 +458,6 @@ def build_radar_chart(scores):
         height=450,
     )
     return fig
-
 
 def build_bar_chart(stats):
     """Horizontal bar chart for document stats."""
@@ -549,7 +487,6 @@ def build_bar_chart(stats):
     )
     return fig
 
-
 def build_sentiment_gauge(sentiment_score):
     color = '#2ecc71' if sentiment_score >= 0 else '#e74c3c'
     fig = go.Figure(go.Indicator(
@@ -571,7 +508,6 @@ def build_sentiment_gauge(sentiment_score):
     fig.update_layout(height=280, margin=dict(l=20, r=20, t=40, b=20))
     return fig
 
-
 def build_complexity_pie(sentence_complexity):
     """Pie chart showing sentence complexity distribution."""
     labels = ['Simple (≤12 words)', 'Medium (13-25 words)', 'Complex (>25 words)']
@@ -592,7 +528,6 @@ def build_complexity_pie(sentence_complexity):
     )
     return fig
 
-
 def build_domain_bar(domain_scores):
     """Horizontal bar chart of domain keyword matches."""
     domains = list(domain_scores.keys())
@@ -612,29 +547,21 @@ def build_domain_bar(domain_scores):
     )
     return fig
 
-
-# ═══════════════════════════════════════════════════════════
-# PDF REPORT (enhanced)
-# ═══════════════════════════════════════════════════════════
-
 def create_pdf_report(filename, data):
     pdf = FPDF()
     pdf.add_page()
 
-    # Title
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 12, txt="PaperIQ Analysis Report", ln=1, align='C')
     pdf.set_font("Arial", size=11)
     pdf.cell(0, 8, txt=f"File: {filename}", ln=1, align='C')
     pdf.ln(8)
 
-    # Composite score
     pdf.set_font("Arial", 'B', 14)
     composite = data['scores'].get('Composite', 0)
     pdf.cell(0, 10, txt=f"Composite Score: {composite}/100", ln=1)
     pdf.ln(4)
 
-    # All scores
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 8, txt="Metric Scores:", ln=1)
     pdf.set_font("Arial", size=11)
@@ -643,13 +570,11 @@ def create_pdf_report(filename, data):
             pdf.cell(0, 7, txt=f"  {key}: {val}/100", ln=1)
     pdf.ln(4)
 
-    # Domain
     domain = data.get('domain', 'N/A')
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 8, txt=f"Detected Domain: {domain}", ln=1)
     pdf.ln(4)
 
-    # Stats
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 8, txt="Document Statistics:", ln=1)
     pdf.set_font("Arial", size=11)
@@ -659,7 +584,6 @@ def create_pdf_report(filename, data):
         pdf.cell(0, 7, txt=f"  {label}: {val}", ln=1)
     pdf.ln(4)
 
-    # Keywords
     keywords = data.get('keywords', [])
     if keywords:
         pdf.set_font("Arial", 'B', 12)
@@ -669,18 +593,16 @@ def create_pdf_report(filename, data):
         pdf.multi_cell(0, 7, txt=f"  {keyword_text}")
         pdf.ln(4)
 
-    # Document summary
     summary = data.get('document_summary', '')
     if summary:
         pdf.set_font("Arial", 'B', 12)
         pdf.cell(0, 8, txt="Document Summary:", ln=1)
         pdf.set_font("Arial", size=10)
-        # Handle encoding: replace non-latin-1 chars
+
         safe_summary = summary.encode('latin-1', errors='replace').decode('latin-1')
         pdf.multi_cell(0, 6, txt=safe_summary)
         pdf.ln(4)
 
-    # Structural completeness
     found = data.get('structural_found', [])
     missing = data.get('structural_missing', [])
     pdf.set_font("Arial", 'B', 12)

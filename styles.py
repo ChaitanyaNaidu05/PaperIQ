@@ -44,7 +44,7 @@ def get_app_styles():
             margin-bottom: 2rem;
         }
 
-        /* Keyword chips */
+        
         .keyword-chip {
             display: inline-block;
             background: linear-gradient(135deg, #DBEAFE 0%, #C7D2FE 100%);
@@ -68,7 +68,7 @@ def get_app_styles():
             border-left: 4px solid #3B82F6;
         }
 
-        /* Stat cards */
+        
         .stat-card {
             background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid #e2e8f0;
@@ -95,7 +95,7 @@ def get_app_styles():
             color: #1e293b;
         }
 
-        /* Domain badge */
+        
         .domain-badge {
             display: inline-block;
             background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
@@ -107,7 +107,7 @@ def get_app_styles():
             letter-spacing: 0.3px;
         }
 
-        /* Structural checklist */
+        
         .struct-found {
             display: inline-block;
             background: #D1FAE5;
@@ -129,7 +129,7 @@ def get_app_styles():
             font-weight: 500;
         }
 
-        /* Summary box */
+        
         .summary-box {
             background: linear-gradient(135deg, #F0F9FF 0%, #EFF6FF 100%);
             border: 1px solid #BFDBFE;
@@ -141,7 +141,7 @@ def get_app_styles():
             color: #1e293b;
         }
 
-        /* Metric score pill */
+        
         .score-pill {
             display: inline-block;
             background: linear-gradient(135deg, #3B82F6 0%, #6366F1 100%);
@@ -172,7 +172,7 @@ def get_app_styles():
             transform: translateY(-1px);
         }
 
-        /* Sidebar styling */
+        
         section[data-testid="stSidebar"] {
             background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
         }
@@ -180,7 +180,7 @@ def get_app_styles():
             color: #E2E8F0;
         }
 
-        /* Tabs styling */
+        
         .stTabs [data-baseweb="tab-list"] {
             gap: 8px;
         }
