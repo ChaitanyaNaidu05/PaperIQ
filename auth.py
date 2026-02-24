@@ -1,11 +1,13 @@
-import hashlib
-import os
+import bcrypt
+
 
 def generate_salt():
-    return os.urandom(32).hex()
+    return bcrypt.gensalt(rounds=12)
+
 
 def hash_password(password, salt):
-    return hashlib.sha256((password + salt).encode()).hexdigest()
+    return bcrypt.hashpw(password.encode(), salt)
+
 
 def verify_password(stored_password, stored_salt, provided_password):
-    return stored_password == hashlib.sha256((provided_password + stored_salt).encode()).hexdigest()
+    return bcrypt.checkpw(provided_password.encode(), stored_password)

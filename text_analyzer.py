@@ -3,6 +3,7 @@ import math
 import numpy as np
 import heapq
 import nltk
+import datetime
 from collections import Counter
 from textblob import TextBlob
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -234,6 +235,19 @@ def detect_domain(text):
         return "General / Interdisciplinary", domain_scores
     return best, domain_scores
 
+
+def detect_domain_enhanced(text):
+    """Enhanced domain classification using transformers if available."""
+    try:
+        import transformer_analyzer
+        if transformer_analyzer.TRANSFORMERS_AVAILABLE:
+            domain, scores = transformer_analyzer.classify_domain_transformer(text)
+            if domain != "General":
+                return domain, scores
+    except Exception:
+        pass
+    return detect_domain(text)
+
 def extract_keywords_tfidf(text, top_n=15):
     """Extract top keywords using TF-IDF on sentence-level documents."""
     sentences = re.split(r'[.!?]\s+', text)
@@ -256,6 +270,19 @@ def extract_keywords_tfidf(text, top_n=15):
         return keywords
     except Exception:
         return []
+
+
+def extract_keywords_enhanced(text, top_n=15):
+    """Extract keywords using transformers if available, fallback to TF-IDF."""
+    try:
+        import transformer_analyzer
+        if transformer_analyzer.TRANSFORMERS_AVAILABLE:
+            keywords = transformer_analyzer.extract_keywords_transformer(text, top_n)
+            if keywords:
+                return keywords
+    except Exception:
+        pass
+    return extract_keywords_tfidf(text, top_n)
 
 def extractive_summarize(text, num_sentences=None):
     """
@@ -325,6 +352,19 @@ def extractive_summarize(text, num_sentences=None):
     selected.sort(key=lambda x: x[1])
     return " ".join(s[2] for s in selected)
 
+
+def extractive_summarize_enhanced(text, num_sentences=None):
+    """Enhanced summarization using transformers if available, fallback to TF-IDF."""
+    try:
+        import transformer_analyzer
+        if transformer_analyzer.TRANSFORMERS_AVAILABLE:
+            summary = transformer_analyzer.extractive_summarize_transformer(text, num_sentences)
+            if summary:
+                return summary
+    except Exception:
+        pass
+    return extractive_summarize(text, num_sentences)
+
 def _sentence_similarity(s1, s2):
     """Quick cosine similarity between two sentences based on word overlap."""
     words1 = set(w.lower() for w in s1.split() if w.lower() not in STOP_WORDS)
@@ -376,10 +416,10 @@ def analyze_full_document(text):
     structural_score, found_sections, missing_sections = calculate_structural_completeness(sections)
     vocab_score, ttr = calculate_vocabulary_richness(words)
     sentence_complexity = classify_sentence_complexity(sentences)
-    domain, domain_scores = detect_domain(text)
-    keywords = extract_keywords_tfidf(text)
+    domain, domain_scores = detect_domain_enhanced(text)
+    keywords = extract_keywords_enhanced(text)
 
-    document_summary = extractive_summarize(text)
+    document_summary = extractive_summarize_enhanced(text)
 
     final_score = round(
         (language_score * 0.15) +
@@ -395,45 +435,184 @@ def analyze_full_document(text):
     , 2)
 
     stats = {
-        "word_count": word_count,
-        "sentence_count": sentence_count,
-        "avg_sentence_len": round(avg_sentence_len, 2),
-        "avg_word_len": round(avg_word_len, 2),
-        "complex_word_ratio": round(len(complex_words) / word_count, 2) if word_count > 0 else 0,
-        "total_citations": total_citations,
-        "citation_density_per_1k": citation_density,
-        "type_token_ratio": ttr,
-        "novelty_phrases_found": novelty_matches,
-        "transition_words_found": transition_count,
-        "reasoning_indicators": reasoning_count,
+        "word_count": int(word_count),
+        "sentence_count": int(sentence_count),
+        "avg_sentence_len": float(round(avg_sentence_len, 2)),
+        "avg_word_len": float(round(avg_word_len, 2)),
+        "complex_word_ratio": float(round(len(complex_words) / word_count, 2)) if word_count > 0 else 0.0,
+        "total_citations": int(total_citations),
+        "citation_density_per_1k": float(citation_density),
+        "type_token_ratio": float(ttr),
+        "novelty_phrases_found": int(novelty_matches),
+        "transition_words_found": int(transition_count),
+        "reasoning_indicators": int(reasoning_count),
     }
 
     return {
         "scores": {
-            "Language": language_score,
-            "Coherence": coherence_score,
-            "Reasoning": reasoning_score,
-            "Sophistication": sophistication_score,
-            "Readability": readability_score,
-            "Citation Density": citation_score,
-            "Technical Depth": technical_depth_score,
-            "Novelty Signal": novelty_score,
-            "Structural Completeness": structural_score,
-            "Vocabulary Richness": vocab_score,
-            "Composite": final_score,
+            "Language": float(language_score),
+            "Coherence": float(coherence_score),
+            "Reasoning": float(reasoning_score),
+            "Sophistication": float(sophistication_score),
+            "Readability": float(readability_score),
+            "Citation Density": float(citation_score),
+            "Technical Depth": float(technical_depth_score),
+            "Novelty Signal": float(novelty_score),
+            "Structural Completeness": float(structural_score),
+            "Vocabulary Richness": float(vocab_score),
+            "Composite": float(final_score),
         },
         "stats": stats,
-        "sentiment": round(sentiment, 2),
+        "sentiment": float(round(sentiment, 2)),
         "issues": [s.raw for s in sentences if len(s.words) > 30],
         "document_summary": document_summary,
-        "sentence_complexity": sentence_complexity,
+        "sentence_complexity": {
+            "simple": int(sentence_complexity["simple"]),
+            "medium": int(sentence_complexity["medium"]),
+            "complex": int(sentence_complexity["complex"]),
+            "simple_pct": float(sentence_complexity["simple_pct"]),
+            "medium_pct": float(sentence_complexity["medium_pct"]),
+            "complex_pct": float(sentence_complexity["complex_pct"]),
+        },
         "domain": domain,
-        "domain_scores": domain_scores,
-        "keywords": keywords,
+        "domain_scores": {k: int(v) for k, v in domain_scores.items()},
+        "keywords": [(str(kw), float(score)) for kw, score in keywords],
         "structural_found": found_sections,
         "structural_missing": missing_sections,
-        "blob": blob,
+        "entities": extract_entities_for_analysis(text),
+        "advanced": extract_advanced_analysis(text, sections, scores, stats),
     }
+
+
+def extract_entities_for_analysis(text: str) -> dict:
+    try:
+        import ner_extractor
+        entity_data = ner_extractor.analyze_entities_full(text)
+        return {
+            "summary": entity_data.get("entities", {}),
+            "authors": entity_data.get("authors", []),
+            "research_questions": entity_data.get("research_questions", []),
+            "contributions": entity_data.get("contributions", []),
+            "counts": entity_data.get("entity_counts", {}),
+        }
+    except Exception as e:
+        return {
+            "summary": {},
+            "authors": [],
+            "research_questions": [],
+            "contributions": [],
+            "counts": {},
+        }
+
+
+def extract_advanced_analysis(text: str, sections: dict, scores: dict, stats: dict) -> dict:
+    try:
+        import advanced_ml
+        advanced_data = advanced_ml.run_advanced_analysis(text, sections, scores, stats)
+        return advanced_data
+    except Exception as e:
+        return {
+            "quality_prediction": {},
+            "acceptance_probability": {},
+            "writing_quality": {},
+            "reproducibility": {},
+            "ethical_compliance": {},
+            "statistical_rigor": {},
+        }
+
+
+def analyze_section(text, section_name):
+    if not text or len(text.strip()) < 50:
+        return {
+            "section": section_name,
+            "word_count": 0,
+            "score": 0,
+            "has_research_question": False,
+            "has_methodology": False,
+            "has_results": False,
+            "clarity_score": 0,
+        }
+
+    blob = TextBlob(text)
+    sentences = blob.sentences
+    words = blob.words
+    word_count = len(words)
+    sentence_count = len(sentences)
+
+    if sentence_count == 0 or word_count == 0:
+        return {
+            "section": section_name,
+            "word_count": 0,
+            "score": 0,
+            "has_research_question": False,
+            "has_methodology": False,
+            "has_results": False,
+            "clarity_score": 0,
+        }
+
+    avg_sentence_len = len(words) / sentence_count
+    complex_words = [w for w in words if len(w) > 6]
+    complex_ratio = len(complex_words) / word_count if word_count > 0 else 0
+
+    readability = calculate_readability(text)
+
+    transitions = ["however", "therefore", "thus", "consequently", "furthermore",
+                   "meanwhile", "moreover", "nevertheless", "additionally", "subsequently"]
+    transition_count = sum(text.lower().count(t) for t in transitions)
+
+    section_lower = section_name.lower()
+    has_research_question = any(q in text.lower() for q in ["research question", "hypothesis", 
+                                "we investigate", "we examine", "this study asks"])
+    has_methodology = any(m in text.lower() for m in ["method", "approach", "algorithm", 
+                           "procedure", "dataset", "experiment", "implementation"])
+    has_results = any(r in text.lower() for r in ["result", "performance", "accuracy", 
+                       "achieved", "outperforms", "experimental", "evaluation"])
+
+    section_score = 0
+    if "abstract" in section_lower:
+        section_score = min(100, readability * 0.4 + (transition_count * 2) + 
+                           (10 if has_research_question else 0) + 30)
+    elif "introduction" in section_lower:
+        section_score = min(100, readability * 0.3 + (transition_count * 2) + 
+                           (20 if has_research_question else 0) + 25)
+    elif "method" in section_lower or "approach" in section_lower:
+        section_score = min(100, readability * 0.3 + (transition_count * 2) + 
+                           (25 if has_methodology else 0) + 25)
+    elif "result" in section_lower or "experiment" in section_lower:
+        section_score = min(100, readability * 0.3 + (transition_count * 2) + 
+                           (25 if has_results else 0) + 25)
+    elif "conclusion" in section_lower:
+        section_score = min(100, readability * 0.4 + (transition_count * 2) + 
+                           (15 if has_research_question else 0) + 25)
+    else:
+        section_score = min(100, readability * 0.4 + (transition_count * 2) + 30)
+
+    clarity_score = max(0, min(100, 100 - (complex_ratio * 100) + (readability * 0.3)))
+
+    return {
+        "section": section_name,
+        "word_count": int(word_count),
+        "sentence_count": int(sentence_count),
+        "avg_sentence_length": float(round(avg_sentence_len, 2)),
+        "readability": float(round(readability, 2)),
+        "score": float(round(section_score, 2)),
+        "clarity_score": float(round(clarity_score, 2)),
+        "has_research_question": has_research_question,
+        "has_methodology": has_methodology,
+        "has_results": has_results,
+        "complex_word_ratio": float(round(complex_ratio, 4)),
+    }
+
+
+def analyze_sections_full(sections):
+    section_scores = []
+    for section_name, content in sections.items():
+        if isinstance(content, dict):
+            content = content.get("content", "")
+        score_data = analyze_section(content, section_name)
+        section_scores.append(score_data)
+    return section_scores
+
 
 def build_radar_chart(scores):
     """10-axis radar chart for all metrics."""
@@ -547,70 +726,147 @@ def build_domain_bar(domain_scores):
     )
     return fig
 
-def create_pdf_report(filename, data):
+def create_pdf_report(filename, data, section_scores=None):
     pdf = FPDF()
     pdf.add_page()
-
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 12, txt="PaperIQ Analysis Report", ln=1, align='C')
-    pdf.set_font("Arial", size=11)
+    pdf.set_fill_color(30, 58, 138)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", 'B', 18)
+    pdf.cell(0, 15, txt="PaperIQ Analysis Report", ln=1, align='C', fill=1)
+    pdf.ln(5)
+    
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", '', 11)
     pdf.cell(0, 8, txt=f"File: {filename}", ln=1, align='C')
+    pdf.cell(0, 6, txt=f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=1, align='C')
     pdf.ln(8)
 
+    pdf.set_fill_color(239, 246, 255)
     pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 12, txt="Overall Assessment", ln=1, fill=1)
+    pdf.ln(3)
+    
     composite = data['scores'].get('Composite', 0)
+    pdf.set_font("Arial", '', 12)
     pdf.cell(0, 10, txt=f"Composite Score: {composite}/100", ln=1)
-    pdf.ln(4)
+    pdf.ln(5)
 
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 8, txt="Metric Scores:", ln=1)
-    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 10, txt="Metric Scores:", ln=1)
+    pdf.ln(2)
+    
+    pdf.set_font("Arial", '', 10)
     for key, val in data['scores'].items():
         if key != "Composite":
-            pdf.cell(0, 7, txt=f"  {key}: {val}/100", ln=1)
-    pdf.ln(4)
+            bar_width = (val / 100) * 140
+            pdf.cell(60, 6, txt=f"  {key}:", border=0)
+            pdf.set_fill_color(99, 110, 250)
+            pdf.cell(bar_width, 6, txt="", border=0, fill=1)
+            pdf.cell(0, 6, txt=f" {val}/100", border=0, ln=1)
+    pdf.ln(5)
 
     domain = data.get('domain', 'N/A')
-    pdf.set_font("Arial", 'B', 12)
+    pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 8, txt=f"Detected Domain: {domain}", ln=1)
-    pdf.ln(4)
+    pdf.ln(5)
 
+    pdf.set_fill_color(239, 246, 255)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 8, txt="Document Statistics:", ln=1)
-    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 10, txt="Document Statistics", ln=1, fill=1)
+    pdf.ln(3)
+    
+    pdf.set_font("Arial", '', 10)
     stats = data.get('stats', {})
-    for key, val in stats.items():
-        label = key.replace('_', ' ').title()
-        pdf.cell(0, 7, txt=f"  {label}: {val}", ln=1)
-    pdf.ln(4)
+    stat_items = [
+        ("Word Count", stats.get("word_count", 0)),
+        ("Sentence Count", stats.get("sentence_count", 0)),
+        ("Avg Sentence Length", f"{stats.get('avg_sentence_len', 0)} words"),
+        ("Avg Word Length", f"{stats.get('avg_word_len', 0)} chars"),
+        ("Total Citations", stats.get("total_citations", 0)),
+        ("Citation Density", f"{stats.get('citation_density_per_1k', 0)} / 1k"),
+        ("Type-Token Ratio", f"{stats.get('type_token_ratio', 0):.4f}"),
+        ("Complex Word Ratio", f"{stats.get('complex_word_ratio', 0):.0%}"),
+    ]
+    for i in range(0, len(stat_items), 2):
+        label1, val1 = stat_items[i]
+        pdf.cell(95, 6, txt=f"  {label1}: {val1}", border=0)
+        if i + 1 < len(stat_items):
+            label2, val2 = stat_items[i + 1]
+            pdf.cell(0, 6, txt=f"{label2}: {val2}", border=0, ln=1)
+        else:
+            pdf.ln(6)
+    pdf.ln(5)
 
     keywords = data.get('keywords', [])
     if keywords:
+        pdf.set_fill_color(239, 246, 255)
         pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 8, txt="Top Keywords:", ln=1)
-        pdf.set_font("Arial", size=11)
-        keyword_text = ", ".join([kw[0] for kw in keywords[:10]])
-        pdf.multi_cell(0, 7, txt=f"  {keyword_text}")
-        pdf.ln(4)
+        pdf.cell(0, 10, txt="Top Keywords", ln=1, fill=1)
+        pdf.ln(3)
+        pdf.set_font("Arial", '', 10)
+        keyword_text = ", ".join([kw[0] for kw in keywords[:15]])
+        pdf.multi_cell(0, 6, txt=f"  {keyword_text}")
+        pdf.ln(5)
 
     summary = data.get('document_summary', '')
     if summary:
+        pdf.set_fill_color(239, 246, 255)
         pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 8, txt="Document Summary:", ln=1)
-        pdf.set_font("Arial", size=10)
-
+        pdf.cell(0, 10, txt="Document Summary", ln=1, fill=1)
+        pdf.ln(3)
+        pdf.set_font("Arial", '', 10)
         safe_summary = summary.encode('latin-1', errors='replace').decode('latin-1')
-        pdf.multi_cell(0, 6, txt=safe_summary)
-        pdf.ln(4)
+        pdf.multi_cell(0, 6, txt=f"  {safe_summary}")
+        pdf.ln(5)
+
+    if section_scores:
+        pdf.set_fill_color(239, 246, 255)
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, txt="Section-wise Analysis", ln=1, fill=1)
+        pdf.ln(3)
+        pdf.set_font("Arial", '', 10)
+        for sec in section_scores:
+            sec_name = sec.get("section", "Unknown")
+            sec_score = sec.get("score", 0)
+            sec_words = sec.get("word_count", 0)
+            sec_clarity = sec.get("clarity_score", 0)
+            pdf.cell(0, 6, txt=f"  {sec_name}: Score={sec_score:.1f}, Words={sec_words}, Clarity={sec_clarity:.1f}", ln=1)
+        pdf.ln(5)
 
     found = data.get('structural_found', [])
     missing = data.get('structural_missing', [])
+    pdf.set_fill_color(239, 246, 255)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 8, txt="Structure Analysis:", ln=1)
-    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 10, txt="Structure Analysis", ln=1, fill=1)
+    pdf.ln(3)
+    pdf.set_font("Arial", '', 10)
     if found:
-        pdf.cell(0, 7, txt=f"  Found: {', '.join(found)}", ln=1)
+        pdf.cell(0, 6, txt=f"  Found: {', '.join(found)}", ln=1)
     if missing:
-        pdf.cell(0, 7, txt=f"  Missing: {', '.join(missing)}", ln=1)
+        pdf.set_text_color(220, 38, 38)
+        pdf.cell(0, 6, txt=f"  Missing: {', '.join(missing)}", ln=1)
+        pdf.set_text_color(0, 0, 0)
+
+    sentiment = data.get('sentiment', 0)
+    pdf.ln(3)
+    pdf.cell(0, 6, txt=f"  Sentiment Polarity: {sentiment:.2f}", ln=1)
+    
+    sentence_complexity = data.get('sentence_complexity', {})
+    if sentence_complexity:
+        pdf.cell(0, 6, txt=f"  Sentence Complexity: Simple={sentence_complexity.get('simple_pct', 0):.1f}%, "
+                          f"Medium={sentence_complexity.get('medium_pct', 0):.1f}%, "
+                          f"Complex={sentence_complexity.get('complex_pct', 0):.1f}%", ln=1)
+
+    issues = data.get('issues', [])
+    if issues:
+        pdf.ln(5)
+        pdf.set_fill_color(254, 226, 226)
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, txt="Areas for Improvement", ln=1, fill=1)
+        pdf.ln(3)
+        pdf.set_font("Arial", '', 10)
+        pdf.set_text_color(185, 28, 28)
+        pdf.multi_cell(0, 6, txt=f"  {len(issues)} sentences exceed 30 words. Consider simplifying for better readability.")
+        pdf.set_text_color(0, 0, 0)
 
     return pdf.output(dest='S').encode('latin-1')
