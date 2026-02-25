@@ -435,5 +435,18 @@ def get_app_styles():
         .comparison-table tr:hover {
             background: #f8fafc;
         }
+
+        .stTextArea label {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .stTextArea textarea {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+        .stExpander .stTextArea textarea {
+            background-color: #f8fafc !important;
+        }
     </style>
     """

@@ -21,3 +21,5 @@ coverage.xml
 .hypothesize
 paperiq.db
 PAPER IQ.docx
+research_papers/
+*.pdf

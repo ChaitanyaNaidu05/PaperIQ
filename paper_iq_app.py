@@ -42,7 +42,7 @@ def navigate_to(page):
 
 def handle_login(username, password):
     user = database.get_user_by_username(username)
-    if user and auth.verify_password(user['password_hash'], None, password):
+    if user and auth.verify_password(user['password_hash'], user['salt'] if user['salt'] else None, password):
         st.session_state["user"] = user
         st.session_state["page"] = "dashboard"
         st.toast(f"Welcome back, {user['username']}!")
@@ -416,8 +416,13 @@ def render_dashboard():
                         if summary:
                             st.markdown(f'<div class="summary-box"><strong>Summary:</strong> {summary}</div>',
                                         unsafe_allow_html=True)
-                        st.text_area(f"Full content - {section_name}", content, height=200,
-                                     key=f"section_{section_name}")
+                        st.markdown("**Full content:**")
+                        st.markdown(f"""
+                        <div style="max-height: 300px; overflow-y: auto; background: #f8fafc; 
+                            padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <pre style="white-space: pre-wrap; word-wrap: break-word; color: #1e293b;">{content}</pre>
+                        </div>
+                        """, unsafe_allow_html=True)
 
         with tab8:
             st.markdown("##### Quality Prediction")
@@ -555,8 +560,13 @@ def render_dashboard():
                     if summary:
                         st.markdown(f'<div class="summary-box"><strong>Summary:</strong> {summary}</div>',
                                     unsafe_allow_html=True)
-                    st.text_area(f"Content – {section_name}", content, height=200,
-                                 key=f"hist_section_{section_name}")
+                    st.markdown("**Full content:**")
+                    st.markdown(f"""
+                    <div style="max-height: 300px; overflow-y: auto; background: #f8fafc; 
+                        padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <pre style="white-space: pre-wrap; word-wrap: break-word; color: #1e293b;">{content}</pre>
+                    </div>
+                    """, unsafe_allow_html=True)
 
     else:
         st.markdown("#### Upload a research paper to analyze")
@@ -669,24 +679,24 @@ def render_compare_page():
             analyses = []
             for analysis_id in selected_ids[:5]:
                 analysis = database.get_analysis_details(analysis_id)
-                if analysis and analysis.get("results_json"):
+                if analysis and analysis["results_json"]:
                     try:
                         results = json.loads(analysis["results_json"])
                         results["filename"] = analysis["filename"]
                         analyses.append(results)
                     except json.JSONDecodeError:
                         continue
-            
+
             if len(analyses) < 2:
                 st.error("Could not load selected documents for comparison.")
             else:
                 import multidoc_analyzer
                 comparison = multidoc_analyzer.compare_multiple_documents(analyses)
-                
+
                 if "error" not in comparison:
                     summary = multidoc_analyzer.generate_comparison_summary(comparison)
                     st.success(summary)
-                    
+
                     st.markdown("##### Overall Rankings")
                     rankings = comparison.get("rankings", {}).get("by_composite_score", [])
                     for i, rank in enumerate(rankings, 1):
@@ -833,12 +843,17 @@ def render_arxiv_page():
                 st.markdown(f"Found {len(papers)} papers:")
                 for i, paper in enumerate(papers):
                     with st.expander(f"{i+1}. {paper.title[:100]}..."):
-                        st.markdown(f"**Authors:** {', '.join(paper.authors[:5])}")
+                        authors_display = ", ".join(paper.authors[:5])
                         if len(paper.authors) > 5:
-                            st.markdown(f"*...and {len(paper.authors)-5} more authors*")
-                        st.markdown(f"**Published:** {paper.published[:10] if paper.published else 'N/A'}")
-                        st.markdown(f"**Categories:** {', '.join(paper.categories[:5])}")
-                        st.markdown(f"**Abstract:** {paper.abstract[:500]}...")
+                            authors_display += f" *...and {len(paper.authors)-5} more*"
+                        st.markdown(f"**Authors:** {authors_display}")
+                        published_display = paper.published[:10] if paper.published else "N/A"
+                        st.markdown(f"**Published:** {published_display}")
+                        categories_display = ", ".join(paper.categories[:5]) if paper.categories else "N/A"
+                        st.markdown(f"**Categories:** {categories_display}")
+                        abstract_clean = " ".join(paper.abstract.split())
+                        abstract_display = abstract_clean[:500] + "..." if len(abstract_clean) > 500 else abstract_clean
+                        st.markdown(f"**Abstract:** {abstract_display}")
                         col_pdf, col_arxiv = st.columns(2)
                         with col_pdf:
                             if paper.pdf_url:

@@ -6,8 +6,19 @@ def generate_salt():
 
 
 def hash_password(password, salt):
-    return bcrypt.hashpw(password.encode(), salt)
+    hashed = bcrypt.hashpw(password.encode(), salt)
+    # Return as string for database storage
+    return hashed.decode() if isinstance(hashed, bytes) else hashed
 
 
 def verify_password(stored_password, stored_salt, provided_password):
-    return bcrypt.checkpw(provided_password.encode(), stored_password)
+    # Convert stored_password to bytes if it's a string
+    # bcrypt hashes include the salt, so we don't need stored_salt separately
+    if isinstance(stored_password, str):
+        stored_password = stored_password.encode()
+    try:
+        return bcrypt.checkpw(provided_password.encode(), stored_password)
+    except (ValueError, TypeError) as e:
+        logger = __import__('logging').getLogger(__name__)
+        logger.error(f"Password verification error: {e}")
+        return False

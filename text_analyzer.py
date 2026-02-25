@@ -434,6 +434,20 @@ def analyze_full_document(text):
         (vocab_score * 0.07)
     , 2)
 
+    scores = {
+        "Language": float(language_score),
+        "Coherence": float(coherence_score),
+        "Reasoning": float(reasoning_score),
+        "Sophistication": float(sophistication_score),
+        "Readability": float(readability_score),
+        "Citation Density": float(citation_score),
+        "Technical Depth": float(technical_depth_score),
+        "Novelty Signal": float(novelty_score),
+        "Structural Completeness": float(structural_score),
+        "Vocabulary Richness": float(vocab_score),
+        "Composite": float(final_score),
+    }
+
     stats = {
         "word_count": int(word_count),
         "sentence_count": int(sentence_count),
@@ -449,19 +463,7 @@ def analyze_full_document(text):
     }
 
     return {
-        "scores": {
-            "Language": float(language_score),
-            "Coherence": float(coherence_score),
-            "Reasoning": float(reasoning_score),
-            "Sophistication": float(sophistication_score),
-            "Readability": float(readability_score),
-            "Citation Density": float(citation_score),
-            "Technical Depth": float(technical_depth_score),
-            "Novelty Signal": float(novelty_score),
-            "Structural Completeness": float(structural_score),
-            "Vocabulary Richness": float(vocab_score),
-            "Composite": float(final_score),
-        },
+        "scores": scores,
         "stats": stats,
         "sentiment": float(round(sentiment, 2)),
         "issues": [s.raw for s in sentences if len(s.words) > 30],
@@ -734,10 +736,11 @@ def create_pdf_report(filename, data, section_scores=None):
     pdf.set_font("Arial", 'B', 18)
     pdf.cell(0, 15, txt="PaperIQ Analysis Report", ln=1, align='C', fill=1)
     pdf.ln(5)
-    
+
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", '', 11)
-    pdf.cell(0, 8, txt=f"File: {filename}", ln=1, align='C')
+    safe_filename = filename.encode('latin-1', errors='ignore').decode('latin-1')
+    pdf.cell(0, 8, txt=f"File: {safe_filename}", ln=1, align='C')
     pdf.cell(0, 6, txt=f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=1, align='C')
     pdf.ln(8)
 
@@ -869,4 +872,4 @@ def create_pdf_report(filename, data, section_scores=None):
         pdf.multi_cell(0, 6, txt=f"  {len(issues)} sentences exceed 30 words. Consider simplifying for better readability.")
         pdf.set_text_color(0, 0, 0)
 
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output(dest='S').encode('utf-8', errors='ignore')
