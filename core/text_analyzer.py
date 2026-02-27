@@ -1,3 +1,4 @@
+import json
 import re
 import math
 import numpy as np
@@ -10,9 +11,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import plotly.graph_objects as go
 from fpdf import FPDF
+from core import reference_parser
+import pandas as pd
+import io
 
-for _corpus in ('punkt', 'punkt_tab', 'averaged_perceptron_tagger', 'stopwords'):
-    nltk.download(_corpus, quiet=True)
+def download_nltk_resources():
+    for _corpus in ('punkt', 'punkt_tab', 'averaged_perceptron_tagger', 'stopwords'):
+        nltk.download(_corpus, quiet=True)
+
+# Call on import, but we'll also recommend using st.cache_resource in the main app
+download_nltk_resources()
 
 from nltk.corpus import stopwords
 
@@ -54,7 +62,6 @@ DOMAIN_KEYWORDS = {
 }
 
 def extract_sections(text):
-    """Extract sections with improved boundary detection."""
     lines = text.split('\n')
     sections = {}
     current_header = "Introduction / Preamble"
@@ -63,7 +70,8 @@ def extract_sections(text):
     common_headers_lower = {h.lower() for h in CANONICAL_SECTIONS}
     common_headers_lower.update([
         "background", "framework", "approach", "implementation",
-        "evaluation", "future work", "acknowledgments", "appendix"
+        "evaluation", "future work", "acknowledgments", "appendix",
+        "experimental setup", "conclusions", "results and discussion"
     ])
 
     for line in lines:
@@ -72,16 +80,13 @@ def extract_sections(text):
             continue
         is_header = False
 
-        if re.match(r'^\d+(\.\d+)*\.?\s+[A-Za-z]', line) and len(line) < 80:
+        if re.match(r'^(?:\d+\.)+\d*\s+[A-Z][A-Za-z]', line) and len(line) < 80:
             is_header = True
-
         elif line.isupper() and 3 < len(line) < 50:
             is_header = True
-
         elif line.lower().rstrip(':') in common_headers_lower:
             is_header = True
-
-        elif re.match(r'^[IVXLC]+\.?\s+[A-Za-z]', line) and len(line) < 60:
+        elif re.match(r'^[IVXLC]+\.?\s+[A-Z]', line) and len(line) < 60:
             is_header = True
 
         if is_header:
@@ -96,6 +101,83 @@ def extract_sections(text):
         sections[current_header] = "\n".join(current_content)
 
     return sections
+
+def detect_elements(text):
+    elements = {
+        "figures": len(re.findall(r'(?i)Figure\s+\d+|Fig\.\s+\d+', text)),
+        "tables": len(re.findall(r'(?i)Table\s+\d+', text)),
+        "equations": len(re.findall(r'\((\d+\.\d+|\d+)\)', text))
+    }
+    return elements
+
+def classify_paper_and_method(text, sections):
+    text_lower = text.lower()
+    
+    paper_types = {
+        "Empirical / Experimental": ["results", "experiments", "evaluation", "methodology", "data set", "metrics"],
+        "Review / Survey": ["survey", "literature review", "related work", "overview", "taxonomy"],
+        "Theoretical / Conceptual": ["theorem", "proof", "lemma", "proposition", "mathematical model"],
+        "Position / Discussion": ["argument", "perspectives", "implications", "future directions"]
+    }
+    
+    methodologies = {
+        "Quantitative": ["statistical", "p-value", "significant", "correlation", "regression", "survey"],
+        "Qualitative": ["interview", "case study", "observations", "theme", "grounded theory"],
+        "Computational": ["algorithm", "simulation", "neural network", "parallel", "architecture"],
+        "Mathematical": ["proof", "analytic", "formal", "derivation", "calculus"]
+    }
+    
+    results = {"type": "General Research", "methodology": "Standard Methodology"}
+    
+    max_count = 0
+    for ptype, keywords in paper_types.items():
+        count = sum(text_lower.count(k) for k in keywords)
+        if count > max_count:
+            max_count = count
+            results["type"] = ptype
+            
+    max_count = 0
+    for meth, keywords in methodologies.items():
+        count = sum(text_lower.count(k) for k in keywords)
+        if count > max_count:
+            max_count = count
+            results["methodology"] = meth
+            
+    return results
+
+def calculate_alignment(sections):
+    abstract = ""
+    conclusion = ""
+    
+    for header, content in sections.items():
+        if "abstract" in header.lower():
+            abstract = content
+        if "conclusion" in header.lower():
+            conclusion = content
+            
+    if not abstract or not conclusion:
+        return 0.0, "Missing Abstract or Conclusion"
+        
+    def get_words(t):
+        return set(re.findall(r'\b\w{4,}\b', t.lower()))
+        
+    abs_words = get_words(abstract)
+    con_words = get_words(conclusion)
+    
+    if not abs_words:
+        return 0.0, "Empty Abstract"
+        
+    intersection = abs_words.intersection(con_words)
+    similarity = len(intersection) / len(abs_words)
+    
+    if similarity > 0.6:
+        label = "High Alignment"
+    elif similarity > 0.3:
+        label = "Moderate Alignment"
+    else:
+        label = "Low Alignment / Deviated"
+        
+    return round(similarity * 100, 2), label
 
 def _count_syllables(word):
     """Estimate syllable count using vowel groups."""
@@ -479,8 +561,11 @@ def analyze_full_document(text):
         "domain": domain,
         "domain_scores": {k: int(v) for k, v in domain_scores.items()},
         "keywords": [(str(kw), float(score)) for kw, score in keywords],
-        "structural_found": found_sections,
         "structural_missing": missing_sections,
+        "elements": detect_elements(text),
+        "classification": classify_paper_and_method(text, sections),
+        "alignment": calculate_alignment(sections),
+        "references": reference_parser.parse_references(text),
         "entities": extract_entities_for_analysis(text),
         "advanced": extract_advanced_analysis(text, sections, scores, stats),
     }
@@ -563,28 +648,28 @@ def analyze_section(text, section_name):
     transition_count = sum(text.lower().count(t) for t in transitions)
 
     section_lower = section_name.lower()
-    has_research_question = any(q in text.lower() for q in ["research question", "hypothesis", 
+    has_research_question = any(q in text.lower() for q in ["research question", "hypothesis",
                                 "we investigate", "we examine", "this study asks"])
-    has_methodology = any(m in text.lower() for m in ["method", "approach", "algorithm", 
+    has_methodology = any(m in text.lower() for m in ["method", "approach", "algorithm",
                            "procedure", "dataset", "experiment", "implementation"])
-    has_results = any(r in text.lower() for r in ["result", "performance", "accuracy", 
+    has_results = any(r in text.lower() for r in ["result", "performance", "accuracy",
                        "achieved", "outperforms", "experimental", "evaluation"])
 
     section_score = 0
     if "abstract" in section_lower:
-        section_score = min(100, readability * 0.4 + (transition_count * 2) + 
+        section_score = min(100, readability * 0.4 + (transition_count * 2) +
                            (10 if has_research_question else 0) + 30)
     elif "introduction" in section_lower:
-        section_score = min(100, readability * 0.3 + (transition_count * 2) + 
+        section_score = min(100, readability * 0.3 + (transition_count * 2) +
                            (20 if has_research_question else 0) + 25)
     elif "method" in section_lower or "approach" in section_lower:
-        section_score = min(100, readability * 0.3 + (transition_count * 2) + 
+        section_score = min(100, readability * 0.3 + (transition_count * 2) +
                            (25 if has_methodology else 0) + 25)
     elif "result" in section_lower or "experiment" in section_lower:
-        section_score = min(100, readability * 0.3 + (transition_count * 2) + 
+        section_score = min(100, readability * 0.3 + (transition_count * 2) +
                            (25 if has_results else 0) + 25)
     elif "conclusion" in section_lower:
-        section_score = min(100, readability * 0.4 + (transition_count * 2) + 
+        section_score = min(100, readability * 0.4 + (transition_count * 2) +
                            (15 if has_research_question else 0) + 25)
     else:
         section_score = min(100, readability * 0.4 + (transition_count * 2) + 30)
@@ -728,56 +813,61 @@ def build_domain_bar(domain_scores):
     )
     return fig
 
+def _safe_txt(s):
+    """Sanitize text for Latin-1, which is what standard FPDF supports."""
+    if s is None:
+        return ""
+    return str(s).encode('latin-1', 'replace').decode('latin-1')
+
 def create_pdf_report(filename, data, section_scores=None):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_fill_color(30, 58, 138)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", 'B', 18)
-    pdf.cell(0, 15, txt="PaperIQ Analysis Report", ln=1, align='C', fill=1)
+    pdf.cell(0, 15, txt=_safe_txt("PaperIQ Analysis Report"), ln=1, align='C', fill=1)
     pdf.ln(5)
 
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", '', 11)
-    safe_filename = filename.encode('latin-1', errors='ignore').decode('latin-1')
-    pdf.cell(0, 8, txt=f"File: {safe_filename}", ln=1, align='C')
-    pdf.cell(0, 6, txt=f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=1, align='C')
+    pdf.cell(0, 8, txt=_safe_txt(f"File: {filename}"), ln=1, align='C')
+    pdf.cell(0, 6, txt=_safe_txt(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}"), ln=1, align='C')
     pdf.ln(8)
 
     pdf.set_fill_color(239, 246, 255)
     pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 12, txt="Overall Assessment", ln=1, fill=1)
+    pdf.cell(0, 12, txt=_safe_txt("Overall Assessment"), ln=1, fill=1)
     pdf.ln(3)
-    
+
     composite = data['scores'].get('Composite', 0)
     pdf.set_font("Arial", '', 12)
-    pdf.cell(0, 10, txt=f"Composite Score: {composite}/100", ln=1)
+    pdf.cell(0, 10, txt=_safe_txt(f"Composite Score: {composite}/100"), ln=1)
     pdf.ln(5)
 
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, txt="Metric Scores:", ln=1)
+    pdf.cell(0, 10, txt=_safe_txt("Metric Scores:"), ln=1)
     pdf.ln(2)
-    
+
     pdf.set_font("Arial", '', 10)
     for key, val in data['scores'].items():
         if key != "Composite":
             bar_width = (val / 100) * 140
-            pdf.cell(60, 6, txt=f"  {key}:", border=0)
+            pdf.cell(60, 6, txt=_safe_txt(f"  {key}:"), border=0)
             pdf.set_fill_color(99, 110, 250)
             pdf.cell(bar_width, 6, txt="", border=0, fill=1)
-            pdf.cell(0, 6, txt=f" {val}/100", border=0, ln=1)
+            pdf.cell(0, 6, txt=_safe_txt(f" {val}/100"), border=0, ln=1)
     pdf.ln(5)
 
     domain = data.get('domain', 'N/A')
     pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 8, txt=f"Detected Domain: {domain}", ln=1)
+    pdf.cell(0, 8, txt=_safe_txt(f"Detected Domain: {domain}"), ln=1)
     pdf.ln(5)
 
     pdf.set_fill_color(239, 246, 255)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, txt="Document Statistics", ln=1, fill=1)
+    pdf.cell(0, 10, txt=_safe_txt("Document Statistics"), ln=1, fill=1)
     pdf.ln(3)
-    
+
     pdf.set_font("Arial", '', 10)
     stats = data.get('stats', {})
     stat_items = [
@@ -792,10 +882,10 @@ def create_pdf_report(filename, data, section_scores=None):
     ]
     for i in range(0, len(stat_items), 2):
         label1, val1 = stat_items[i]
-        pdf.cell(95, 6, txt=f"  {label1}: {val1}", border=0)
+        pdf.cell(95, 6, txt=_safe_txt(f"  {label1}: {val1}"), border=0)
         if i + 1 < len(stat_items):
             label2, val2 = stat_items[i + 1]
-            pdf.cell(0, 6, txt=f"{label2}: {val2}", border=0, ln=1)
+            pdf.cell(0, 6, txt=_safe_txt(f"{label2}: {val2}"), border=0, ln=1)
         else:
             pdf.ln(6)
     pdf.ln(5)
@@ -804,28 +894,27 @@ def create_pdf_report(filename, data, section_scores=None):
     if keywords:
         pdf.set_fill_color(239, 246, 255)
         pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 10, txt="Top Keywords", ln=1, fill=1)
+        pdf.cell(0, 10, txt=_safe_txt("Top Keywords"), ln=1, fill=1)
         pdf.ln(3)
         pdf.set_font("Arial", '', 10)
         keyword_text = ", ".join([kw[0] for kw in keywords[:15]])
-        pdf.multi_cell(0, 6, txt=f"  {keyword_text}")
+        pdf.multi_cell(0, 6, txt=_safe_txt(f"  {keyword_text}"))
         pdf.ln(5)
 
     summary = data.get('document_summary', '')
     if summary:
         pdf.set_fill_color(239, 246, 255)
         pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 10, txt="Document Summary", ln=1, fill=1)
+        pdf.cell(0, 10, txt=_safe_txt("Document Summary"), ln=1, fill=1)
         pdf.ln(3)
         pdf.set_font("Arial", '', 10)
-        safe_summary = summary.encode('latin-1', errors='replace').decode('latin-1')
-        pdf.multi_cell(0, 6, txt=f"  {safe_summary}")
+        pdf.multi_cell(0, 6, txt=_safe_txt(f"  {summary}"))
         pdf.ln(5)
 
     if section_scores:
         pdf.set_fill_color(239, 246, 255)
         pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 10, txt="Section-wise Analysis", ln=1, fill=1)
+        pdf.cell(0, 10, txt=_safe_txt("Section-wise Analysis"), ln=1, fill=1)
         pdf.ln(3)
         pdf.set_font("Arial", '', 10)
         for sec in section_scores:
@@ -833,43 +922,66 @@ def create_pdf_report(filename, data, section_scores=None):
             sec_score = sec.get("score", 0)
             sec_words = sec.get("word_count", 0)
             sec_clarity = sec.get("clarity_score", 0)
-            pdf.cell(0, 6, txt=f"  {sec_name}: Score={sec_score:.1f}, Words={sec_words}, Clarity={sec_clarity:.1f}", ln=1)
+            pdf.cell(0, 6, txt=_safe_txt(f"  {sec_name}: Score={sec_score:.1f}, Words={sec_words}, Clarity={sec_clarity:.1f}"), ln=1)
         pdf.ln(5)
 
     found = data.get('structural_found', [])
     missing = data.get('structural_missing', [])
     pdf.set_fill_color(239, 246, 255)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, txt="Structure Analysis", ln=1, fill=1)
+    pdf.cell(0, 10, txt=_safe_txt("Structure Analysis"), ln=1, fill=1)
     pdf.ln(3)
     pdf.set_font("Arial", '', 10)
     if found:
-        pdf.cell(0, 6, txt=f"  Found: {', '.join(found)}", ln=1)
+        pdf.cell(0, 6, txt=_safe_txt(f"  Found: {', '.join(found)}"), ln=1)
     if missing:
         pdf.set_text_color(220, 38, 38)
-        pdf.cell(0, 6, txt=f"  Missing: {', '.join(missing)}", ln=1)
+        pdf.cell(0, 6, txt=_safe_txt(f"  Missing: {', '.join(missing)}"), ln=1)
         pdf.set_text_color(0, 0, 0)
 
     sentiment = data.get('sentiment', 0)
     pdf.ln(3)
-    pdf.cell(0, 6, txt=f"  Sentiment Polarity: {sentiment:.2f}", ln=1)
-    
+    pdf.cell(0, 6, txt=_safe_txt(f"  Sentiment Polarity: {sentiment:.2f}"), ln=1)
+
     sentence_complexity = data.get('sentence_complexity', {})
     if sentence_complexity:
-        pdf.cell(0, 6, txt=f"  Sentence Complexity: Simple={sentence_complexity.get('simple_pct', 0):.1f}%, "
+        pdf.cell(0, 6, txt=_safe_txt(f"  Sentence Complexity: Simple={sentence_complexity.get('simple_pct', 0):.1f}%, "
                           f"Medium={sentence_complexity.get('medium_pct', 0):.1f}%, "
-                          f"Complex={sentence_complexity.get('complex_pct', 0):.1f}%", ln=1)
+                          f"Complex={sentence_complexity.get('complex_pct', 0):.1f}%"), ln=1)
 
     issues = data.get('issues', [])
     if issues:
         pdf.ln(5)
         pdf.set_fill_color(254, 226, 226)
         pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 10, txt="Areas for Improvement", ln=1, fill=1)
+        pdf.cell(0, 10, txt=_safe_txt("Areas for Improvement"), ln=1, fill=1)
         pdf.ln(3)
         pdf.set_font("Arial", '', 10)
         pdf.set_text_color(185, 28, 28)
-        pdf.multi_cell(0, 6, txt=f"  {len(issues)} sentences exceed 30 words. Consider simplifying for better readability.")
+        pdf.multi_cell(0, 6, txt=_safe_txt(f"  {len(issues)} sentences exceed 30 words. Consider simplifying for better readability."))
         pdf.set_text_color(0, 0, 0)
 
-    return pdf.output(dest='S').encode('utf-8', errors='ignore')
+    return pdf.output(dest='S').encode('latin-1', errors='ignore')
+
+
+def create_json_export(data):
+    """Export analysis data as JSON."""
+    return json.dumps(data, indent=2).encode('utf-8')
+
+
+def create_csv_export(data):
+    """Export analysis scores and stats as CSV."""
+    rows = []
+    
+    # Add Scores
+    for k, v in data.get('scores', {}).items():
+        rows.append({"Category": "Score", "Metric": k, "Value": v})
+        
+    # Add Stats
+    for k, v in data.get('stats', {}).items():
+        rows.append({"Category": "Statistic", "Metric": k, "Value": v})
+        
+    df = pd.DataFrame(rows)
+    output = io.StringIO()
+    df.to_csv(output, index=False)
+    return output.getvalue().encode('utf-8')

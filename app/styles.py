@@ -61,7 +61,7 @@ def get_app_styles():
         .keyword-chip {
             display: inline-block;
             background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-            color: #3730a3;
+            color: #3730a3 !important;
             padding: 0.4rem 1rem;
             border-radius: 20px;
             margin: 0.25rem;
@@ -80,6 +80,7 @@ def get_app_styles():
             background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
             border-radius: 12px;
             border-left: 4px solid #9333ea;
+            color: #1e293b !important;
         }
 
         .stat-card {
@@ -90,6 +91,7 @@ def get_app_styles():
             margin-bottom: 0.75rem;
             transition: all 0.2s ease;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            color: #1e293b !important;
         }
         .stat-card:hover {
             transform: translateY(-3px);
@@ -98,7 +100,7 @@ def get_app_styles():
         }
         .stat-label {
             font-size: 0.75rem;
-            color: #64748b;
+            color: #64748b !important;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: 600;
@@ -154,7 +156,7 @@ def get_app_styles():
             margin: 1rem 0;
             line-height: 1.8;
             font-size: 0.95rem;
-            color: #0c4a6e;
+            color: #0c4a6e !important;
         }
 
         .score-pill {
@@ -305,6 +307,7 @@ def get_app_styles():
             margin: 0.75rem 0;
             transition: all 0.2s ease;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            color: #1e293b !important;
         }
         .section-score-card:hover {
             transform: translateY(-2px);
@@ -376,6 +379,7 @@ def get_app_styles():
             padding: 1.25rem;
             margin: 0.75rem 0;
             border-left: 4px solid #9333ea;
+            color: #581c87 !important;
         }
 
         .warning-card {
@@ -385,6 +389,7 @@ def get_app_styles():
             padding: 1rem;
             margin: 0.5rem 0;
             border-left: 4px solid #ea580c;
+            color: #9a3412 !important;
         }
 
         .success-card {
@@ -394,6 +399,7 @@ def get_app_styles():
             padding: 1rem;
             margin: 0.5rem 0;
             border-left: 4px solid #16a34a;
+            color: #166534 !important;
         }
 
         .metric-grid {

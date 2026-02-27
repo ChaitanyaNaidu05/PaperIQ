@@ -48,10 +48,10 @@ class AnalysisQueue:
             filename=filename,
             text=text
         )
-        
+
         with self._lock:
             self.tasks[task_id] = task
-        
+
         future = self.executor.submit(
             self._run_analysis,
             task_id,
@@ -71,23 +71,23 @@ class AnalysisQueue:
         task = self.tasks.get(task_id)
         if not task:
             return
-        
+
         try:
             task.status = "running"
             task.started_at = datetime.now()
             task.current_step = "Initializing analysis..."
             task.progress = 10
-            
+
             result = analysis_func(text)
-            
+
             task.progress = 100
             task.current_step = "Complete"
             task.result = result
             task.status = "completed"
             task.completed_at = datetime.now()
-            
+
             logger.info(f"Analysis task completed: {task_id}")
-            
+
         except Exception as e:
             task.status = "failed"
             task.error = str(e)
@@ -140,7 +140,7 @@ class AsyncAnalyzer:
         task = self.queue.get_task_status(task_id)
         if not task:
             return {"error": "Task not found"}
-        
+
         return {
             "task_id": task.task_id,
             "filename": task.filename,

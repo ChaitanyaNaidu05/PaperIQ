@@ -8,6 +8,4 @@ numpy
 scikit-learn
 nltk
 bcrypt
-transformers
-sentence-transformers
-torch
+pandas

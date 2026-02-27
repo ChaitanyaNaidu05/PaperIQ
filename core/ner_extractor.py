@@ -106,7 +106,7 @@ DATASET_PATTERNS = [
 def extract_research_methods(text: str) -> List[Entity]:
     methods = []
     text_lower = text.lower()
-    
+
     for method in RESEARCH_METHODS:
         pattern = r"\b" + re.escape(method) + r"\b"
         matches = list(re.finditer(pattern, text_lower))
@@ -117,7 +117,7 @@ def extract_research_methods(text: str) -> List[Entity]:
                 count=len(matches),
                 positions=[m.start() for m in matches]
             ))
-    
+
     methods.sort(key=lambda x: x.count, reverse=True)
     return methods
 
@@ -125,7 +125,7 @@ def extract_research_methods(text: str) -> List[Entity]:
 def extract_technical_terms(text: str) -> List[Entity]:
     terms = []
     text_lower = text.lower()
-    
+
     for term in TECHNICAL_TERMS:
         pattern = r"\b" + re.escape(term) + r"\b"
         matches = list(re.finditer(pattern, text_lower))
@@ -136,14 +136,14 @@ def extract_technical_terms(text: str) -> List[Entity]:
                 count=len(matches),
                 positions=[m.start() for m in matches]
             ))
-    
+
     terms.sort(key=lambda x: x.count, reverse=True)
     return terms
 
 
 def extract_institutions(text: str) -> List[Entity]:
     institutions = []
-    
+
     for pattern in INSTITUTION_PATTERNS:
         matches = list(re.finditer(pattern, text))
         if matches:
@@ -154,20 +154,20 @@ def extract_institutions(text: str) -> List[Entity]:
                     count=1,
                     positions=[match.start()]
                 ))
-    
+
     institution_counts = Counter([inst.text for inst in institutions])
     unique_institutions = [
         Entity(text=name, entity_type="INSTITUTION", count=count)
         for name, count in institution_counts.items()
     ]
     unique_institutions.sort(key=lambda x: x.count, reverse=True)
-    
+
     return unique_institutions
 
 
 def extract_software_tools(text: str) -> List[Entity]:
     tools = []
-    
+
     for pattern in SOFTWARE_PATTERNS:
         matches = list(re.finditer(pattern, text))
         if matches:
@@ -178,20 +178,20 @@ def extract_software_tools(text: str) -> List[Entity]:
                     count=1,
                     positions=[match.start()]
                 ))
-    
+
     tool_counts = Counter([tool.text for tool in tools])
     unique_tools = [
         Entity(text=name, entity_type="SOFTWARE", count=count)
         for name, count in tool_counts.items()
     ]
     unique_tools.sort(key=lambda x: x.count, reverse=True)
-    
+
     return unique_tools
 
 
 def extract_datasets(text: str) -> List[Entity]:
     datasets = []
-    
+
     for pattern in DATASET_PATTERNS:
         matches = list(re.finditer(pattern, text))
         if matches:
@@ -202,14 +202,14 @@ def extract_datasets(text: str) -> List[Entity]:
                     count=1,
                     positions=[match.start()]
                 ))
-    
+
     dataset_counts = Counter([ds.text for ds in datasets])
     unique_datasets = [
         Entity(text=name, entity_type="DATASET", count=count)
         for name, count in dataset_counts.items()
     ]
     unique_datasets.sort(key=lambda x: x.count, reverse=True)
-    
+
     return unique_datasets
 
 
@@ -225,7 +225,7 @@ def extract_metrics(text: str) -> List[Entity]:
         (r"p\s*[<>=]\s*0\.?\d*", "P_VALUE"),
         (r"r\s*[=:]\s*-?\d+\.?\d*", "CORRELATION"),
     ]
-    
+
     metrics = []
     for pattern, metric_type in metric_patterns:
         matches = list(re.finditer(pattern, text, re.IGNORECASE))
@@ -237,7 +237,7 @@ def extract_metrics(text: str) -> List[Entity]:
                     count=1,
                     positions=[match.start()]
                 ))
-    
+
     return metrics
 
 
@@ -248,7 +248,7 @@ def extract_citations(text: str) -> List[Entity]:
         r"[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+et\s+al\.\s*\(\d{4}\)",
         r"\(\d{4}\)",
     ]
-    
+
     citations = []
     for pattern in citation_patterns:
         matches = list(re.finditer(pattern, text))
@@ -260,7 +260,7 @@ def extract_citations(text: str) -> List[Entity]:
                     count=1,
                     positions=[match.start()]
                 ))
-    
+
     return citations
 
 
@@ -278,7 +278,7 @@ def extract_all_entities(text: str) -> Dict[str, List[Entity]]:
 
 def get_entity_summary(entities: Dict[str, List[Entity]]) -> Dict[str, Dict]:
     summary = {}
-    
+
     for entity_type, entity_list in entities.items():
         total_count = sum(e.count for e in entity_list)
         unique_count = len(entity_list)
@@ -286,20 +286,20 @@ def get_entity_summary(entities: Dict[str, List[Entity]]) -> Dict[str, Dict]:
             {"text": e.text, "count": e.count}
             for e in entity_list[:10]
         ]
-        
+
         summary[entity_type] = {
             "total_mentions": total_count,
             "unique_entities": unique_count,
             "top_entities": top_entities
         }
-    
+
     return summary
 
 
 def extract_author_names(text: str) -> List[str]:
     author_pattern = r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b"
     matches = re.findall(author_pattern, text)
-    
+
     common_words = {
         "The", "This", "That", "These", "Those", "However", "Therefore",
         "Furthermore", "Moreover", "Nevertheless", "Consequently", "Subsequently",
@@ -307,12 +307,12 @@ def extract_author_names(text: str) -> List[str]:
         "Conclusion", "Abstract", "References", "Acknowledgments", "Appendix",
         "Figure", "Table", "Equation", "Algorithm", "Dataset", "Data"
     }
-    
+
     authors = [m for m in matches if m.split()[0] not in common_words and len(m.split()) <= 3]
-    
+
     author_counts = Counter(authors)
     unique_authors = list(author_counts.keys())[:20]
-    
+
     return unique_authors
 
 
@@ -322,12 +322,12 @@ def extract_research_questions(text: str) -> List[str]:
         r"(?:we ask|we investigate|we examine|this paper asks)\s*([^.!?]+)",
         r"(?:whether|how|what|why|which|when)\s+[^.!?]+\?",
     ]
-    
+
     questions = []
     for pattern in question_patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
         questions.extend(matches)
-    
+
     questions = [q.strip() for q in questions if len(q.strip()) > 10]
     return questions[:10]
 
@@ -338,12 +338,12 @@ def extract_contributions(text: str) -> List[str]:
         r"(?:our main|the main|our primary)\s*(?:contribution|goal|objective)\s*(?:is|was)\s*([^.!?]+)",
         r"(?:we propose|we introduce|we present|we develop)\s+([^.!?]+)",
     ]
-    
+
     contributions = []
     for pattern in contribution_patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
         contributions.extend(matches)
-    
+
     contributions = [c.strip() for c in contributions if len(c.strip()) > 10]
     return contributions[:10]
 
@@ -351,11 +351,11 @@ def extract_contributions(text: str) -> List[str]:
 def analyze_entities_full(text: str) -> Dict:
     entities = extract_all_entities(text)
     summary = get_entity_summary(entities)
-    
+
     authors = extract_author_names(text)
     research_questions = extract_research_questions(text)
     contributions = extract_contributions(text)
-    
+
     return {
         "entities": summary,
         "authors": authors,

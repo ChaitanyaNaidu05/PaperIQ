@@ -2,14 +2,14 @@ import sqlite3
 import json
 import logging
 
-DB_NAME = "paperiq.db"
+DB_PATH = "data/paperiq.db"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -41,6 +41,10 @@ def init_db():
     ''')
     try:
         c.execute('ALTER TABLE analysis_history ADD COLUMN results_json TEXT')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute('ALTER TABLE analysis_history ADD COLUMN file_path TEXT')
     except sqlite3.OperationalError:
         pass
     conn.commit()
@@ -75,16 +79,25 @@ def get_user_by_username(username):
     return user
 
 
-def save_analysis(user_id, filename, sections_count, keywords, sections_data, results_data):
+def get_user_by_id(user_id):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+    user = c.fetchone()
+    conn.close()
+    return user
+
+
+def save_analysis(user_id, filename, sections_count, keywords, sections_data, results_data, file_path=None):
     conn = get_db_connection()
     c = conn.cursor()
     keywords_json = json.dumps(keywords)
     sections_json = json.dumps(sections_data)
     results_json = json.dumps(results_data)
     c.execute('''
-        INSERT INTO analysis_history (user_id, filename, sections_count, keywords_json, sections_json, results_json)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (user_id, filename, sections_count, keywords_json, sections_json, results_json))
+        INSERT INTO analysis_history (user_id, filename, sections_count, keywords_json, sections_json, results_json, file_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, filename, sections_count, keywords_json, sections_json, results_json, file_path))
     conn.commit()
     conn.close()
     logger.info(f"Analysis saved: {filename} for user {user_id}")

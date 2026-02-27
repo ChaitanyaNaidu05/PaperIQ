@@ -16,9 +16,7 @@ RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('p
 
 RUN python -c "from textblob import TextBlob; TextBlob('test').download_corpora()"
 
-EXPOSE 8501
+RUN mkdir -p /app/data
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8501')" || exit 1
-
-CMD ["streamlit", "run", "paper_iq_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Render provides $PORT at runtime, so we use it here.
+CMD streamlit run app/main.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true
