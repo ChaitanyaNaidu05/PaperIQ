@@ -621,89 +621,88 @@ def render_dashboard():
                 st.stop()
             
             if st.button("Analyze Document", type="primary"):
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+                progress_bar = st.progress(0)
+                status_text = st.empty()
 
-            status_text.text("Step 1: Extracting text from document...")
-            progress_bar.progress(10)
+                status_text.text("Step 1: Extracting text from document...")
+                progress_bar.progress(10)
 
-            if uploaded_file.name.endswith(".pdf"):
-                text = pdf_processor.extract_text_from_pdf(uploaded_file)
-            elif uploaded_file.name.endswith(".docx"):
-                text = pdf_processor.extract_text_from_docx(uploaded_file)
-            else:
-                text = uploaded_file.getvalue().decode("utf-8")
+                if uploaded_file.name.endswith(".pdf"):
+                    text = pdf_processor.extract_text_from_pdf(uploaded_file)
+                elif uploaded_file.name.endswith(".docx"):
+                    text = pdf_processor.extract_text_from_docx(uploaded_file)
+                else:
+                    text = uploaded_file.getvalue().decode("utf-8")
 
-            status_text.text("Step 2: Cleaning and preprocessing text...")
-            progress_bar.progress(25)
+                status_text.text("Step 2: Cleaning and preprocessing text...")
+                progress_bar.progress(25)
 
-            cleaned_text = pdf_processor.clean_text(text)
+                cleaned_text = pdf_processor.clean_text(text)
 
-            status_text.text("Step 3: Extracting document sections...")
-            progress_bar.progress(40)
+                status_text.text("Step 3: Extracting document sections...")
+                progress_bar.progress(40)
 
-            sections = text_analyzer.extract_sections(cleaned_text)
-            db_sections = {k: {"content": v, "keywords": []} for k, v in sections.items()}
+                sections = text_analyzer.extract_sections(cleaned_text)
+                db_sections = {k: {"content": v, "keywords": []} for k, v in sections.items()}
 
-            status_text.text("Step 4: Analyzing document metrics...")
-            progress_bar.progress(55)
+                status_text.text("Step 4: Analyzing document metrics...")
+                progress_bar.progress(55)
 
-            results = text_analyzer.analyze_full_document(cleaned_text)
+                results = text_analyzer.analyze_full_document(cleaned_text)
 
-            if results is None:
-                progress_bar.empty()
-                status_text.empty()
-                st.error("Could not extract meaningful text from this document.")
-            elif cleaned_text.startswith("[Error:"):
-                progress_bar.empty()
-                status_text.empty()
-                st.error(cleaned_text)
-            else:
-                status_text.text("Step 5: Performing section-wise analysis...")
-                progress_bar.progress(70)
+                if results is None:
+                    progress_bar.empty()
+                    status_text.empty()
+                    st.error("Could not extract meaningful text from this document.")
+                elif cleaned_text.startswith("[Error:"):
+                    progress_bar.empty()
+                    status_text.empty()
+                    st.error(cleaned_text)
+                else:
+                    status_text.text("Step 5: Performing section-wise analysis...")
+                    progress_bar.progress(70)
 
-                section_scores = text_analyzer.analyze_sections_full(sections)
-                results["section_scores"] = section_scores
+                    section_scores = text_analyzer.analyze_sections_full(sections)
+                    results["section_scores"] = section_scores
 
-                status_text.text("Step 6: Saving analysis results...")
-                progress_bar.progress(85)
+                    status_text.text("Step 6: Saving analysis results...")
+                    progress_bar.progress(85)
 
-                paper_dir = "data/research_papers"
-                if not os.path.exists(paper_dir):
-                    os.makedirs(paper_dir)
+                    paper_dir = "data/research_papers"
+                    if not os.path.exists(paper_dir):
+                        os.makedirs(paper_dir)
+                    
+                    saved_path = os.path.join(paper_dir, f"{int(time.time())}_{uploaded_file.name}")
+                    with open(saved_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+
+                    database.save_analysis(
+                        user_id=user['id'],
+                        filename=uploaded_file.name,
+                        sections_count=len(sections),
+                        keywords=list(results["scores"].keys()),
+                        sections_data=db_sections,
+                        results_data=results,
+                        file_path=saved_path
+                    )
+
+                    st.session_state["current_analysis"] = {
+                        "filename": uploaded_file.name,
+                        "sections": db_sections,
+                        "results": results,
+                        "section_scores": section_scores,
+                        "timestamp": str(datetime.datetime.now()),
+                        "file_path": saved_path
+                    }
+
+                    progress_bar.progress(100)
+                    status_text.text("Analysis complete!")
+                    time.sleep(0.5)
+                    progress_bar.empty()
+                    status_text.empty()
+                    st.toast("Analysis complete!")
+                    st.rerun()
                 
-                saved_path = os.path.join(paper_dir, f"{int(time.time())}_{uploaded_file.name}")
-                with open(saved_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-
-                database.save_analysis(
-                    user_id=user['id'],
-                    filename=uploaded_file.name,
-                    sections_count=len(sections),
-                    keywords=list(results["scores"].keys()),
-                    sections_data=db_sections,
-                    results_data=results,
-                    file_path=saved_path
-                )
-
-                st.session_state["current_analysis"] = {
-                    "filename": uploaded_file.name,
-                    "sections": db_sections,
-                    "results": results,
-                    "section_scores": section_scores,
-                    "timestamp": str(datetime.datetime.now()),
-                    "file_path": saved_path
-                }
-
-                progress_bar.progress(100)
-                status_text.text("Analysis complete!")
-                time.sleep(0.5)
-                progress_bar.empty()
-                status_text.empty()
-                st.toast("Analysis complete!")
-                st.rerun()
-
-
 def render_compare_page():
     user = st.session_state["user"]
 
