@@ -127,7 +127,7 @@ def load_analysis_from_history(analysis_id):
             sections_data = {}
             results_data = None
             keywords_data = []
-            
+
             try:
                 if analysis["sections_json"]:
                     sections_data = json.loads(analysis["sections_json"])
@@ -341,7 +341,7 @@ def render_dashboard():
             with c4:
                 _render_stat_card("Complex Word Ratio", f"{stats.get('complex_word_ratio', 0):.0%}")
                 _render_stat_card("Type-Token Ratio", f"{stats.get('type_token_ratio', 0):.4f}")
-            
+
             elements = results.get("elements", {})
             e1, e2, e3 = st.columns(3)
             with e1:
@@ -493,12 +493,12 @@ def render_dashboard():
         with tab8:
             st.markdown("##### Advanced Analysis & Intelligence")
             advanced = results.get("advanced", {})
-            
+
             # Sub-tabs within Advanced Analysis for better organization
             adv_tab1, adv_tab2, adv_tab3, adv_tab4 = st.tabs([
                 "Quality & Acceptance", "Writing & Clarity", "Reproducibility", "Ethics & Rigor"
             ])
-            
+
             with adv_tab1:
                 quality = advanced.get("quality_prediction", {})
                 if quality:
@@ -509,15 +509,15 @@ def render_dashboard():
                     col_q1.metric("Quality Score", f"{quality_score}/100")
                     col_q2.metric("Grade", grade)
                     col_q3.metric("Estimated Percentile", f"{percentile}th")
-                    
+
                     st.markdown("**Strengths:**")
                     for s in quality.get("strengths", ["Adequate structural quality"]):
                         st.markdown(f'<div class="success-card">{s}</div>', unsafe_allow_html=True)
-                    
+
                     st.markdown("**Areas for Improvement:**")
                     for w in quality.get("weaknesses", ["No major weaknesses"]):
                         st.markdown(f'<div class="warning-card">{w}</div>', unsafe_allow_html=True)
-                    
+
                     st.markdown("---")
                     st.markdown("##### Acceptance Probability")
                     acceptance = advanced.get("acceptance_probability", {})
@@ -538,13 +538,13 @@ def render_dashboard():
                     col_w1.metric("Clarity Score", f"{clarity_score}/100")
                     col_w2.metric("Avg Sentence Length", f"{avg_sent_len} words")
                     col_w3.metric("Passive Voice", f"{passive_ratio*100:.1f}%")
-                    
+
                     issues = writing.get("issues", [])
                     if issues:
                         st.markdown("**Writing Issues:**")
                         for issue in issues:
                             st.markdown(f'<div class="warning-card">{issue.get("message", "")}</div>', unsafe_allow_html=True)
-                    
+
                     st.markdown("**Suggestions:**")
                     for s in writing.get("suggestions", ["Maintain current writing style"]):
                         st.markdown(f"- {s}")
@@ -557,7 +557,7 @@ def render_dashboard():
                     col_r1, col_r2 = st.columns(2)
                     col_r1.metric("Reproducibility Score", f"{rep_score}/100")
                     col_r2.metric("Grade", rep_grade)
-                    
+
                     st.markdown("**To Improve Reproducibility:**")
                     for r in reproducibility.get("recommendations", ["N/A"]):
                         st.markdown(f"- {r}")
@@ -569,7 +569,7 @@ def render_dashboard():
                     col_e1, col_e2 = st.columns(2)
                     col_e1.metric("Compliance Score", f"{compliance_score}/100")
                     col_e2.markdown(f"**Status:** {ethical.get('status', 'N/A').replace('_', ' ').title()}")
-                
+
                 st.markdown("---")
                 statistical = advanced.get("statistical_rigor", {})
                 if statistical:
@@ -619,7 +619,7 @@ def render_dashboard():
             if uploaded_file.size > 10 * 1024 * 1024:
                 st.error("File size exceeds 10MB limit. Please upload a smaller document.")
                 st.stop()
-            
+
             if st.button("Analyze Document", type="primary"):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
@@ -671,7 +671,7 @@ def render_dashboard():
                     paper_dir = "data/research_papers"
                     if not os.path.exists(paper_dir):
                         os.makedirs(paper_dir)
-                    
+
                     saved_path = os.path.join(paper_dir, f"{int(time.time())}_{uploaded_file.name}")
                     with open(saved_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
@@ -702,7 +702,7 @@ def render_dashboard():
                     status_text.empty()
                     st.toast("Analysis complete!")
                     st.rerun()
-                
+
 def render_compare_page():
     user = st.session_state["user"]
 
@@ -992,11 +992,11 @@ def render_arxiv_page():
                             with st.status("Ingesting arXiv paper...", expanded=True) as status:
                                 paper_dir = "data/research_papers"
                                 if not os.path.exists(paper_dir): os.makedirs(paper_dir)
-                                
+
                                 safe_title = re.sub(r'[^\w\s-]', '', paper.title).replace(' ', '_')[:50]
                                 filename = f"{paper.paper_id}_{safe_title}.pdf"
                                 save_path = os.path.join(paper_dir, filename)
-                                
+
                                 st.write("Downloading PDF...")
                                 if arxiv_client.download_paper_pdf(paper.pdf_url, save_path):
                                     st.write("Extracting and analyzing...")
@@ -1005,11 +1005,11 @@ def render_arxiv_page():
                                     sections = text_analyzer.extract_sections(cleaned_text)
                                     db_sections = {k: {"content": v, "keywords": []} for k, v in sections.items()}
                                     results = text_analyzer.analyze_full_document(cleaned_text)
-                                    
+
                                     if results:
                                         section_scores = text_analyzer.analyze_sections_full(sections)
                                         results["section_scores"] = section_scores
-                                        
+
                                         database.save_analysis(
                                             user_id=user['id'],
                                             filename=filename,
@@ -1066,19 +1066,19 @@ def render_trends_page():
     # Aggregate Analytics
     total_papers = len(analyses)
     avg_composite = sum(a['scores'].get('Composite', 0) for a in analyses) / total_papers
-    
+
     domains = [a.get('domain', 'General') for a in analyses]
     from collections import Counter
     domain_counts = Counter(domains)
-    
+
     st.markdown(f"Analyzed **{total_papers}** papers with an average composite score of **{avg_composite:.1f}/100**.")
-    
+
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("##### Domain Distribution")
         fig = go.Figure(go.Pie(labels=list(domain_counts.keys()), values=list(domain_counts.values()), hole=0.4))
         st.plotly_chart(fig, use_container_width=True)
-        
+
     with col2:
         st.markdown("##### Score Progression")
         scores = [a['scores'].get('Composite', 0) for a in analyses][::-1]
@@ -1091,7 +1091,7 @@ def render_trends_page():
     all_kws = []
     for a in analyses:
         all_kws.extend([k[0] for k in a.get('keywords', [])[:5]])
-    
+
     if all_kws:
         common = Counter(all_kws).most_common(15)
         kw_html = "".join(f'<span class="keyword-chip">{k} <span class="score-pill">{v}</span></span>' for k, v in common)
