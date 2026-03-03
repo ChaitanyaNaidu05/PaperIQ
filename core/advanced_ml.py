@@ -535,13 +535,22 @@ def analyze_statistical_rigor(text: str, stats: Dict) -> Dict:
     }
 
 
-def run_advanced_analysis(text: str, sections: Dict, scores: Dict, stats: Dict) -> Dict:
+def run_advanced_analysis(text: str, sections: Dict, scores: Dict, stats: Dict, keywords: List, domain: str) -> Dict:
     quality_data = predict_paper_quality(scores, stats)
-    acceptance_data = estimate_acceptance_probability(quality_data, scores.get("domain", "General"))
+    acceptance_data = estimate_acceptance_probability(quality_data, domain)
     writing_data = analyze_writing_quality(text, scores)
     reproducibility_data = compute_reproducibility_score(text, sections)
     ethical_data = check_ethical_compliance(text)
     statistical_data = analyze_statistical_rigor(text, stats)
+    
+    try:
+        from core import future_research
+        future_directions = future_research.generate_future_research_directions(
+            text, sections, scores, stats, keywords, domain
+        )
+    except Exception as e:
+        logger.error(f"Error generating future research directions: {e}")
+        future_directions = {}
 
     return {
         "quality_prediction": quality_data,
@@ -549,5 +558,6 @@ def run_advanced_analysis(text: str, sections: Dict, scores: Dict, stats: Dict) 
         "writing_quality": writing_data,
         "reproducibility": reproducibility_data,
         "ethical_compliance": ethical_data,
-        "statistical_rigor": statistical_data
+        "statistical_rigor": statistical_data,
+        "future_research": future_directions
     }

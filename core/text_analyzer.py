@@ -12,19 +12,54 @@ from sklearn.metrics.pairwise import cosine_similarity
 import plotly.graph_objects as go
 from fpdf import FPDF
 from core import reference_parser
+from core import export_latex
+from core import export_docx
 import pandas as pd
 import io
 
 def download_nltk_resources():
-    for _corpus in ('punkt', 'punkt_tab', 'averaged_perceptron_tagger', 'stopwords'):
-        nltk.download(_corpus, quiet=True)
+    resources = {
+        'punkt': 'tokenizers/punkt',
+        'punkt_tab': 'tokenizers/punkt_tab',
+        'averaged_perceptron_tagger': 'taggers/averaged_perceptron_tagger',
+        'stopwords': 'corpora/stopwords'
+    }
+    for resource, path in resources.items():
+        try:
+            nltk.data.find(path)
+        except LookupError:
+            try:
+                nltk.download(resource, quiet=True)
+            except Exception as e:
+                print(f"Warning: Could not download NLTK resource '{resource}': {e}")
 
 # Call on import, but we'll also recommend using st.cache_resource in the main app
 download_nltk_resources()
 
-from nltk.corpus import stopwords
+try:
+    from nltk.corpus import stopwords
+    STOP_WORDS = set(stopwords.words('english'))
+except Exception:
+    # Fallback basic stop words
+    STOP_WORDS = set(["a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can", "could", "did", "do", "does", "doing", "down", "during", "each", "few", "for", "from", "further", "had", "has", "have", "having", "he", "her", "here", "hers", "herself", "him", "himself", "his", "how", "i", "if", "in", "into", "is", "it", "its", "itself", "just", "me", "more", "most", "my", "myself", "no", "nor", "not", "now", "of", "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "she", "should", "so", "some", "such", "than", "that", "the", "their", "theirs", "them", "themselves", "then", "there", "these", "they", "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "we", "were", "what", "when", "where", "which", "while", "who", "whom", "why", "with", "would", "you", "your", "yours", "yourself", "yourselves"])
 
-STOP_WORDS = set(stopwords.words('english'))
+def _get_sentences(blob):
+    """Safely get sentences from TextBlob with a regex fallback if punkt is missing."""
+    try:
+        return blob.sentences
+    except Exception:
+        # Fallback: simple regex-based sentence splitting
+        raw_sents = re.split(r'(?<=[.!?])\s+', blob.string)
+        # Wrap each raw sentence back in a TextBlob if we need .words, etc.
+        return [TextBlob(s.strip()) for s in raw_sents if s.strip()]
+
+def _get_words(blob):
+    """Safely get words from TextBlob with a regex fallback."""
+    try:
+        return blob.words
+    except Exception:
+        # Fallback: simple regex-based word splitting
+        return re.findall(r'\b\w+\b', blob.string)
 
 CANONICAL_SECTIONS = [
     "Abstract", "Introduction", "Literature Review", "Related Work",
@@ -287,7 +322,7 @@ def classify_sentence_complexity(sentences):
     medium = 0
     complex_count = 0
     for s in sentences:
-        wc = len(s.words)
+        wc = len(_get_words(s))
         if wc <= 12:
             simple += 1
         elif wc <= 25:
@@ -375,7 +410,7 @@ def extractive_summarize(text, num_sentences=None):
     - Adaptive sentence count based on text length
     """
     blob = TextBlob(text)
-    sentences = blob.sentences
+    sentences = _get_sentences(blob)
     if not sentences:
         return ""
 
@@ -402,7 +437,7 @@ def extractive_summarize(text, num_sentences=None):
 
     scored = []
     for i, sentence in enumerate(sentences):
-        words_in_sent = [w.lower() for w in sentence.words if w.lower() not in STOP_WORDS]
+        words_in_sent = [w.lower() for w in _get_words(sentence) if w.lower() not in STOP_WORDS]
         word_score = sum(freq.get(w, 0) for w in words_in_sent)
 
         if len(words_in_sent) > 0:
@@ -460,14 +495,14 @@ def _sentence_similarity(s1, s2):
 def analyze_full_document(text):
     """Comprehensive analysis with original + new metrics."""
     blob = TextBlob(text)
-    sentences = blob.sentences
-    words = blob.words
+    sentences = _get_sentences(blob)
+    words = _get_words(blob)
     word_count = len(words)
     sentence_count = len(sentences)
     if sentence_count == 0:
         return None
 
-    avg_sentence_len = np.mean([len(s.words) for s in sentences])
+    avg_sentence_len = np.mean([len(_get_words(s)) for s in sentences])
     avg_word_len = np.mean([len(w) for w in words])
     sentiment = blob.sentiment.polarity
 
@@ -548,7 +583,7 @@ def analyze_full_document(text):
         "scores": scores,
         "stats": stats,
         "sentiment": float(round(sentiment, 2)),
-        "issues": [s.raw for s in sentences if len(s.words) > 30],
+        "issues": [s.raw for s in sentences if len(_get_words(s)) > 30],
         "document_summary": document_summary,
         "sentence_complexity": {
             "simple": int(sentence_complexity["simple"]),
@@ -567,7 +602,7 @@ def analyze_full_document(text):
         "alignment": calculate_alignment(sections),
         "references": reference_parser.parse_references(text),
         "entities": extract_entities_for_analysis(text),
-        "advanced": extract_advanced_analysis(text, sections, scores, stats),
+        "advanced": extract_advanced_analysis(text, sections, scores, stats, keywords, domain),
     }
 
 
@@ -592,10 +627,10 @@ def extract_entities_for_analysis(text: str) -> dict:
         }
 
 
-def extract_advanced_analysis(text: str, sections: dict, scores: dict, stats: dict) -> dict:
+def extract_advanced_analysis(text: str, sections: dict, scores: dict, stats: dict, keywords: list, domain: str) -> dict:
     try:
         import advanced_ml
-        advanced_data = advanced_ml.run_advanced_analysis(text, sections, scores, stats)
+        advanced_data = advanced_ml.run_advanced_analysis(text, sections, scores, stats, keywords, domain)
         return advanced_data
     except Exception as e:
         return {
@@ -605,6 +640,7 @@ def extract_advanced_analysis(text: str, sections: dict, scores: dict, stats: di
             "reproducibility": {},
             "ethical_compliance": {},
             "statistical_rigor": {},
+            "future_research": {},
         }
 
 
@@ -621,8 +657,8 @@ def analyze_section(text, section_name):
         }
 
     blob = TextBlob(text)
-    sentences = blob.sentences
-    words = blob.words
+    sentences = _get_sentences(blob)
+    words = _get_words(blob)
     word_count = len(words)
     sentence_count = len(sentences)
 
@@ -970,14 +1006,11 @@ def create_json_export(data):
 
 
 def create_csv_export(data):
-    """Export analysis scores and stats as CSV."""
     rows = []
     
-    # Add Scores
     for k, v in data.get('scores', {}).items():
         rows.append({"Category": "Score", "Metric": k, "Value": v})
         
-    # Add Stats
     for k, v in data.get('stats', {}).items():
         rows.append({"Category": "Statistic", "Metric": k, "Value": v})
         
@@ -985,3 +1018,11 @@ def create_csv_export(data):
     output = io.StringIO()
     df.to_csv(output, index=False)
     return output.getvalue().encode('utf-8')
+
+
+def create_latex_export(filename, data, section_scores=None):
+    return export_latex.create_latex_export(data, filename, section_scores)
+
+
+def create_docx_export(filename, data, section_scores=None):
+    return export_docx.create_docx_export(data, filename, section_scores)

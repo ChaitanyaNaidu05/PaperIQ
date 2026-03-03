@@ -283,7 +283,7 @@ def render_dashboard():
             alignment = results.get("alignment", (0, "N/A"))
             st.markdown(f"**Story Alignment:** {alignment[0]}% ({alignment[1]})")
 
-        col_domain, col_pdf, col_json, col_csv = st.columns([3, 1, 1, 1])
+        col_domain, col_pdf, col_json, col_csv, col_latex, col_docx = st.columns([2, 1, 1, 1, 1, 1])
         with col_domain:
             domain = results.get("domain", "General")
             st.markdown(f'<span class="domain-badge">{domain}</span>', unsafe_allow_html=True)
@@ -297,6 +297,12 @@ def render_dashboard():
         with col_csv:
             csv_bytes = text_analyzer.create_csv_export(results)
             st.download_button("CSV", csv_bytes, f"{filename}_data.csv", "text/csv")
+        with col_latex:
+            latex_bytes = text_analyzer.create_latex_export(filename, results, section_scores)
+            st.download_button("LaTeX", latex_bytes, f"{filename}_report.tex", "text/x-tex")
+        with col_docx:
+            docx_bytes = text_analyzer.create_docx_export(filename, results, section_scores)
+            st.download_button("DOCX", docx_bytes, f"{filename}_report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
         doc_summary = results.get("document_summary", "")
         if doc_summary:
@@ -306,12 +312,36 @@ def render_dashboard():
         keywords = results.get("keywords", [])
         _render_keyword_chips(keywords)
 
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-            "Radar & Scores", "Statistics", "Structure", "Section Analysis",
-            "Entities", "Issues", "Sections", "Advanced Analysis", "Bibliography"
-        ])
-
-        with tab1:
+        references = results.get("references", [])
+        entities = results.get("entities", {})
+        has_entities = entities and entities.get("summary") and any(
+            entities.get("summary", {}).get(key, {}).get("unique_entities", 0) > 0 
+            for key in ["methods", "software", "datasets", "institutions", "technical_terms"]
+        )
+        future_research_data = results.get("advanced", {}).get("future_research", {})
+        has_future_research = future_research_data and (
+            future_research_data.get("limitations") or 
+            future_research_data.get("research_gaps") or 
+            future_research_data.get("priority_directions")
+        )
+        
+        tab_names = ["Radar & Scores", "Statistics", "Structure", "Section Analysis", "Issues", "Sections", "Advanced Analysis"]
+        
+        if has_entities:
+            tab_names.append("Entities")
+        if references:
+            tab_names.append("Bibliography")
+        if has_future_research:
+            tab_names.append("Future Research")
+        tab_names.append("Plagiarism Check")
+        
+        tabs = st.tabs(tab_names)
+        tab_index = 0
+        
+        with tabs[tab_index]:
+            tab_index += 1
+        with tabs[tab_index]:
+            tab_index += 1
             col_radar, col_right = st.columns([3, 2])
             with col_radar:
                 radar_fig = text_analyzer.build_radar_chart(scores)
@@ -326,7 +356,10 @@ def render_dashboard():
                     pie_fig = text_analyzer.build_complexity_pie(complexity)
                     st.plotly_chart(pie_fig, use_container_width=True)
 
-        with tab2:
+        with tabs[tab_index]:
+            tab_index += 1
+        with tabs[tab_index]:
+            tab_index += 1
             stats = results["stats"]
             c1, c2, c3, c4 = st.columns(4)
             with c1:
@@ -363,7 +396,10 @@ def render_dashboard():
                     domain_fig = text_analyzer.build_domain_bar(domain_scores)
                     st.plotly_chart(domain_fig, use_container_width=True)
 
-        with tab3:
+        with tabs[tab_index]:
+            tab_index += 1
+        with tabs[tab_index]:
+            tab_index += 1
             structural_score = scores.get("Structural Completeness", 0)
             st.metric("Structural Completeness Score", f"{structural_score}/100")
             st.markdown("##### Detected Sections")
@@ -382,7 +418,8 @@ def render_dashboard():
             with col_b:
                 st.metric("Reasoning Indicators", stats.get("reasoning_indicators", 0))
 
-        with tab4:
+        with tabs[tab_index]:
+            tab_index += 1
             st.markdown("##### Section-wise Scores")
             section_scores = results.get("section_scores", [])
             if section_scores:
@@ -589,6 +626,193 @@ def render_dashboard():
                         st.markdown(f"**Raw:** {ref['raw']}")
             else:
                 st.info("No bibliography section detected or parsed.")
+
+        with tab10:
+            st.markdown("##### Future Research Directions")
+            future_research_data = results.get("advanced", {}).get("future_research", {})
+            
+            if future_research_data:
+                summary = future_research_data.get("summary", "")
+                if summary:
+                    st.info(summary)
+                
+                st.markdown("---")
+                col_fr1, col_fr2, col_fr3 = st.columns(3)
+                
+                with col_fr1:
+                    st.markdown("**Short-term (0-6 months)**")
+                    short_term = future_research_data.get("timeline", {}).get("short_term", [])
+                    if short_term:
+                        for item in short_term:
+                            st.markdown(f'<div class="success-card">{item}</div>', unsafe_allow_html=True)
+                    else:
+                        st.info("No short-term directions identified")
+                
+                with col_fr2:
+                    st.markdown("**Medium-term (6-18 months)**")
+                    medium_term = future_research_data.get("timeline", {}).get("medium_term", [])
+                    if medium_term:
+                        for item in medium_term:
+                            st.markdown(f'<div class="warning-card">{item}</div>', unsafe_allow_html=True)
+                    else:
+                        st.info("No medium-term directions identified")
+                
+                with col_fr3:
+                    st.markdown("**Long-term (18+ months)**")
+                    long_term = future_research_data.get("timeline", {}).get("long_term", [])
+                    if long_term:
+                        for item in long_term:
+                            st.markdown(f'<div style="background: #f0f9ff; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0; border-left: 3px solid #0ea5e9;">{item}</div>', unsafe_allow_html=True)
+                    else:
+                        st.info("No long-term directions identified")
+                
+                st.markdown("---")
+                st.markdown("**Priority Research Directions**")
+                priority_dirs = future_research_data.get("priority_directions", [])
+                if priority_dirs:
+                    for i, pdir in enumerate(priority_dirs, 1):
+                        with st.expander(f"{i}. {pdir.get('direction', 'N/A')}"):
+                            st.markdown(f"**Rationale:** {pdir.get('rationale', 'N/A')}")
+                            st.markdown(f"**Timeline:** {pdir.get('timeline', 'N/A')}")
+                            st.markdown(f"**Difficulty:** {pdir.get('difficulty', 'N/A')}")
+                
+                st.markdown("---")
+                research_questions = future_research_data.get("research_questions", [])
+                if research_questions:
+                    st.markdown("**Suggested Research Questions**")
+                    for i, rq in enumerate(research_questions, 1):
+                        st.markdown(f"{i}. {rq}")
+                
+                st.markdown("---")
+                col_gap, col_trend = st.columns(2)
+                
+                with col_gap:
+                    st.markdown("**Identified Research Gaps**")
+                    gaps = future_research_data.get("research_gaps", [])
+                    if gaps:
+                        for gap in gaps[:5]:
+                            st.markdown(f"- {gap.get('indicator', 'N/A')}: {gap.get('context', 'N/A')[:100]}...")
+                    else:
+                        st.info("No explicit gaps detected")
+                
+                with col_trend:
+                    st.markdown("**Emerging Trends**")
+                    trends = future_research_data.get("emerging_trends", [])
+                    if trends:
+                        for trend in trends[:5]:
+                            st.markdown(f"- **{trend.get('topic', 'N/A')}** (relevance: {trend.get('relevance_score', 0)})")
+                    else:
+                        st.info("No emerging trends identified")
+                
+                st.markdown("---")
+                collab_opps = future_research_data.get("collaboration_opportunities", [])
+                if collab_opps:
+                    st.markdown("**Collaboration Opportunities**")
+                    for opp in collab_opps:
+                        st.markdown(f"- **{opp.get('field', 'N/A')}** ({opp.get('type', 'N/A')}): {opp.get('rationale', 'N/A')}")
+            else:
+                st.info("Future research analysis not available for this document.")
+
+        with tab11:
+            st.markdown("##### Plagiarism Detection")
+            st.markdown("Analyze document for self-similarity, paraphrasing, and potential plagiarism issues.")
+            
+            if st.button("Run Plagiarism Check", type="primary"):
+                with st.spinner("Analyzing document for plagiarism..."):
+                    try:
+                        import core.plagiarism_detector as plagiarism_detector
+                        
+                        full_text = current_analysis.get("sections", {})
+                        text_content = ""
+                        for section_name, content in full_text.items():
+                            if isinstance(content, dict):
+                                text_content += content.get("content", "") + "\n\n"
+                            else:
+                                text_content += content + "\n\n"
+                        
+                        plag_result = plagiarism_detector.analyze_plagiarism(text_content)
+                        
+                        if "error" in plag_result:
+                            st.error(plag_result["error"])
+                        else:
+                            plag_score = plag_result.get("plagiarism_score", {})
+                            
+                            col_p1, col_p2, col_p3, col_p4 = st.columns(4)
+                            with col_p1:
+                                score_val = plag_score.get("overall_score", 0)
+                                st.metric("Plagiarism Score", f"{score_val:.1f}/100")
+                            with col_p2:
+                                risk = plag_score.get("risk_level", "unknown").upper()
+                                risk_color = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢", "MINIMAL": "🟢"}.get(risk, "⚪")
+                                st.metric("Risk Level", f"{risk_color} {risk}")
+                            with col_p3:
+                                affected = plag_score.get("affected_sentences", 0)
+                                st.metric("Affected Sentences", affected)
+                            with col_p4:
+                                affected_pct = plag_score.get("affected_percentage", 0)
+                                st.metric("Affected %", f"{affected_pct:.1f}%")
+                            
+                            st.markdown("---")
+                            stats = plag_result.get("statistics", {})
+                            col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+                            with col_s1:
+                                st.metric("Self-matches", stats.get("total_self_matches", 0))
+                            with col_s2:
+                                st.metric("Paraphrase Candidates", stats.get("total_paraphrase_candidates", 0))
+                            with col_s3:
+                                st.metric("Copied Sections", stats.get("total_copied_sections", 0))
+                            with col_s4:
+                                st.metric("External Matches", stats.get("total_external_matches", 0))
+                            
+                            st.markdown("---")
+                            st.markdown("**Recommendations**")
+                            recommendations = plag_result.get("recommendations", [])
+                            for rec in recommendations:
+                                if "HIGH RISK" in rec:
+                                    st.error(rec)
+                                elif "MEDIUM RISK" in rec:
+                                    st.warning(rec)
+                                else:
+                                    st.info(rec)
+                            
+                            st.markdown("---")
+                            self_matches = plag_result.get("self_similarity_matches", [])
+                            if self_matches:
+                                st.markdown("**Self-Similarity Matches (Top 10)**")
+                                for i, match in enumerate(self_matches, 1):
+                                    with st.expander(f"Match {i}: Similarity {match.get('similarity', 0):.2%}"):
+                                        st.markdown(f"**Sentence 1 (Index {match.get('sentence_1_index', 0)}):**")
+                                        st.markdown(f"> {match.get('sentence_1', 'N/A')}")
+                                        st.markdown(f"**Sentence 2 (Index {match.get('sentence_2_index', 0)}):**")
+                                        st.markdown(f"> {match.get('sentence_2', 'N/A')}")
+                            
+                            paraphrase_matches = plag_result.get("paraphrase_candidates", [])
+                            if paraphrase_matches:
+                                st.markdown("---")
+                                st.markdown("**Potential Paraphrases (Top 10)**")
+                                for i, match in enumerate(paraphrase_matches, 1):
+                                    with st.expander(f"Paraphrase {i}: N-gram Overlap {match.get('ngram_overlap', 0):.2%}"):
+                                        st.markdown(f"**Sentence 1 (Index {match.get('sentence_1_index', 0)}):**")
+                                        st.markdown(f"> {match.get('sentence_1', 'N/A')}")
+                                        st.markdown(f"**Sentence 2 (Index {match.get('sentence_2_index', 0)}):**")
+                                        st.markdown(f"> {match.get('sentence_2', 'N/A')}")
+                            
+                            copied_sections = plag_result.get("copied_sections", [])
+                            if copied_sections:
+                                st.markdown("---")
+                                st.markdown("**Copied Sections**")
+                                for i, section in enumerate(copied_sections, 1):
+                                    with st.expander(f"Section {i}: Similarity {section.get('similarity', 0):.2%}"):
+                                        st.markdown(f"**Section 1 (Starting at {section.get('section_1_start', 0)}):**")
+                                        st.markdown(f"> {section.get('section_1', 'N/A')}")
+                                        st.markdown(f"**Section 2 (Starting at {section.get('section_2_start', 0)}):**")
+                                        st.markdown(f"> {section.get('section_2', 'N/A')}")
+                    
+                    except Exception as e:
+                        st.error(f"Error during plagiarism analysis: {str(e)}")
+                        logger.error(f"Plagiarism check error: {e}")
+            else:
+                st.info("Click the button above to run plagiarism detection on this document.")
 
     elif current_analysis and not current_analysis.get("results"):
         st.info(f"Viewing saved analysis for: **{current_analysis['filename']}**")
