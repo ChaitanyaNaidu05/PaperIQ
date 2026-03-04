@@ -17,7 +17,7 @@ from app import styles
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-st.set_page_config(page_title="PaperIQ", layout="wide")
+st.set_page_config(page_title="PaperIQ", layout="wide", initial_sidebar_state="collapsed")
 
 # PHASE 2: Health Check & Environment Config
 if st.query_params.get("health") == "1":
@@ -348,13 +348,14 @@ def render_dashboard():
             tab_names.append("Bibliography")
         if has_future_research:
             tab_names.append("Future Research")
-        tab_names.append("Plagiarism Check")
+        tab_names.append("Plagiarism Analysis")
         
-        tabs = st.tabs(tab_names)
-        tab_index = 0
+        st.markdown("<br>", unsafe_allow_html=True)
+        selected_view = st.radio("Analysis View", tab_names, horizontal=True, label_visibility="collapsed")
         
-        with tabs[tab_index]:
-            tab_index += 1
+        st.markdown('<div class="animate-fade-in delay-1">', unsafe_allow_html=True)
+        
+        if selected_view == "Radar & Scores":
             col_radar, col_right = st.columns([3, 2])
             with col_radar:
                 radar_fig = text_analyzer.build_radar_chart(scores)
@@ -369,8 +370,7 @@ def render_dashboard():
                     pie_fig = text_analyzer.build_complexity_pie(complexity)
                     st.plotly_chart(pie_fig, use_container_width=True)
 
-        with tabs[tab_index]:
-            tab_index += 1
+        elif selected_view == "Statistics":
             stats = results["stats"]
             c1, c2, c3, c4 = st.columns(4)
             with c1:
@@ -407,8 +407,8 @@ def render_dashboard():
                     domain_fig = text_analyzer.build_domain_bar(domain_scores)
                     st.plotly_chart(domain_fig, use_container_width=True)
 
-        with tabs[tab_index]:
-            tab_index += 1
+        elif selected_view == "Structure":
+            stats = results["stats"]
             structural_score = scores.get("Structural Completeness", 0)
             st.metric("Structural Completeness Score", f"{structural_score}/100")
             st.markdown("##### Detected Sections")
@@ -427,8 +427,7 @@ def render_dashboard():
             with col_b:
                 st.metric("Reasoning Indicators", stats.get("reasoning_indicators", 0))
 
-        with tabs[tab_index]:
-            tab_index += 1
+        elif selected_view == "Section Analysis":
             st.markdown("##### Section-wise Scores")
             section_scores = results.get("section_scores", [])
             if section_scores:
@@ -456,10 +455,8 @@ def render_dashboard():
             else:
                 st.info("Section-wise analysis not available for this document.")
 
-        if has_entities:
-            with tabs[tab_index]:
-                tab_index += 1
-                st.markdown("##### Extracted Entities")
+        elif has_entities and selected_view == "Entities":
+            st.markdown("##### Extracted Entities")
             entities = results.get("entities", {})
             if entities and entities.get("summary"):
                 entity_summary = entities["summary"]
@@ -509,8 +506,7 @@ def render_dashboard():
             else:
                 st.info("Entity extraction not available for this document.")
 
-        with tabs[tab_index]:
-            tab_index += 1
+        elif selected_view == "Issues":
             issues = results.get("issues", [])
             if issues:
                 st.warning(f"**{len(issues)}** sentences exceed 30 words:")
@@ -519,8 +515,7 @@ def render_dashboard():
             else:
                 st.success("No overly long sentences detected.")
 
-        with tabs[tab_index]:
-            tab_index += 1
+        elif selected_view == "Sections":
             sections = current_analysis.get("sections", {})
             if sections:
                 for section_name, content in sections.items():
@@ -540,8 +535,7 @@ def render_dashboard():
                         </div>
                         """, unsafe_allow_html=True)
 
-        with tabs[tab_index]:
-            tab_index += 1
+        elif selected_view == "Advanced Analysis":
             st.markdown("##### Advanced Analysis & Intelligence")
             advanced = results.get("advanced", {})
 
@@ -573,11 +567,15 @@ def render_dashboard():
                     st.warning(f"Could not regenerate advanced analysis: {e}")
 
             # Sub-tabs within Advanced Analysis for better organization
-            adv_tab1, adv_tab2, adv_tab3, adv_tab4 = st.tabs([
-                "Quality & Acceptance", "Writing & Clarity", "Reproducibility", "Ethics & Rigor"
-            ])
+            st.markdown("<br>", unsafe_allow_html=True)
+            adv_view = st.radio("Advanced Topics", 
+                                ["Quality & Acceptance", "Writing & Clarity", "Reproducibility", "Ethics & Rigor"], 
+                                horizontal=True, 
+                                label_visibility="collapsed")
+            
+            st.markdown('<div class="animate-fade-in delay-2">', unsafe_allow_html=True)
 
-            with adv_tab1:
+            if adv_view == "Quality & Acceptance":
                 quality = advanced.get("quality_prediction", {})
                 if quality:
                     quality_score = quality.get("quality_score", 0)
@@ -608,7 +606,7 @@ def render_dashboard():
                 else:
                     st.info("Quality prediction data is not available. Try re-uploading and re-analyzing the document.")
 
-            with adv_tab2:
+            elif adv_view == "Writing & Clarity":
                 writing = advanced.get("writing_quality", {})
                 if writing:
                     clarity_score = writing.get("clarity_score", 0)
@@ -631,7 +629,7 @@ def render_dashboard():
                 else:
                     st.info("Writing quality data is not available. Try re-uploading and re-analyzing the document.")
 
-            with adv_tab3:
+            elif adv_view == "Reproducibility":
                 reproducibility = advanced.get("reproducibility", {})
                 if reproducibility:
                     rep_score = reproducibility.get("score", 0)
@@ -646,7 +644,7 @@ def render_dashboard():
                 else:
                     st.info("Reproducibility data is not available. Try re-uploading and re-analyzing the document.")
 
-            with adv_tab4:
+            elif adv_view == "Ethics & Rigor":
                 ethical = advanced.get("ethical_compliance", {})
                 if ethical:
                     compliance_score = ethical.get("compliance_score", 0)
@@ -665,111 +663,108 @@ def render_dashboard():
                     col_s2.metric("Grade", statistical.get("grade", "N/A"), help="A = comprehensive statistical reporting. D = minimal or missing statistical analysis.")
                 else:
                     st.info("Statistical rigor data is not available.")
+            
+            st.markdown('</div>', unsafe_allow_html=True) # Close adv_view div
 
-        if references:
-            with tabs[tab_index]:
-                tab_index += 1
-                references = results.get("references", [])
-                if references:
-                    st.markdown(f"##### Detected References ({len(references)})")
-                    for i, ref in enumerate(references, 1):
-                        with st.expander(f"[{i}] {ref.get('authors', 'Unknown Authors')} ({ref.get('year', 'N/A')})"):
-                            if ref.get("title"):
-                                st.markdown(f"**Title:** {ref['title']}")
-                            st.markdown(f"**Raw:** {ref['raw']}")
-                else:
-                    st.info("No bibliography section detected or parsed.")
+        elif references and selected_view == "Bibliography":
+            references = results.get("references", [])
+            if references:
+                st.markdown(f"##### Detected References ({len(references)})")
+                for i, ref in enumerate(references, 1):
+                    with st.expander(f"[{i}] {ref.get('authors', 'Unknown Authors')} ({ref.get('year', 'N/A')})"):
+                        if ref.get("title"):
+                            st.markdown(f"**Title:** {ref['title']}")
+                        st.markdown(f"**Raw:** {ref['raw']}")
+            else:
+                st.info("No bibliography section detected or parsed.")
 
-        if has_future_research:
-            with tabs[tab_index]:
-                tab_index += 1
-                st.markdown("##### Future Research Directions")
-                future_research_data = results.get("advanced", {}).get("future_research", {})
+        elif has_future_research and selected_view == "Future Research":
+            st.markdown("##### Future Research Directions")
+            future_research_data = results.get("advanced", {}).get("future_research", {})
+            
+            if future_research_data:
+                summary = future_research_data.get("summary", "")
+                if summary:
+                    st.info(summary)
                 
-                if future_research_data:
-                    summary = future_research_data.get("summary", "")
-                    if summary:
-                        st.info(summary)
-                    
-                    st.markdown("---")
-                    col_fr1, col_fr2, col_fr3 = st.columns(3)
-                    
-                    with col_fr1:
-                        st.markdown("**Short-term (0-6 months)**")
-                        short_term = future_research_data.get("timeline", {}).get("short_term", [])
-                        if short_term:
-                            for item in short_term:
-                                st.markdown(f'<div class="success-card">{item}</div>', unsafe_allow_html=True)
-                        else:
-                            st.info("No short-term directions identified")
-                    
-                    with col_fr2:
-                        st.markdown("**Medium-term (6-18 months)**")
-                        medium_term = future_research_data.get("timeline", {}).get("medium_term", [])
-                        if medium_term:
-                            for item in medium_term:
-                                st.markdown(f'<div class="warning-card">{item}</div>', unsafe_allow_html=True)
-                        else:
-                            st.info("No medium-term directions identified")
-                    
-                    with col_fr3:
-                        st.markdown("**Long-term (18+ months)**")
-                        long_term = future_research_data.get("timeline", {}).get("long_term", [])
-                        if long_term:
-                            for item in long_term:
-                                st.markdown(f'<div style="background: #f0f9ff; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0; border-left: 3px solid #0ea5e9;">{item}</div>', unsafe_allow_html=True)
-                        else:
-                            st.info("No long-term directions identified")
-                    
-                    st.markdown("---")
-                    st.markdown("**Priority Research Directions**")
-                    priority_dirs = future_research_data.get("priority_directions", [])
-                    if priority_dirs:
-                        for i, pdir in enumerate(priority_dirs, 1):
-                            with st.expander(f"{i}. {pdir.get('direction', 'N/A')}"):
-                                st.markdown(f"**Rationale:** {pdir.get('rationale', 'N/A')}")
-                                st.markdown(f"**Timeline:** {pdir.get('timeline', 'N/A')}")
-                                st.markdown(f"**Difficulty:** {pdir.get('difficulty', 'N/A')}")
-                    
-                    st.markdown("---")
-                    research_questions = future_research_data.get("research_questions", [])
-                    if research_questions:
-                        st.markdown("**Suggested Research Questions**")
-                        for i, rq in enumerate(research_questions, 1):
-                            st.markdown(f"{i}. {rq}")
-                    
-                    st.markdown("---")
-                    col_gap, col_trend = st.columns(2)
-                    
-                    with col_gap:
-                        st.markdown("**Identified Research Gaps**")
-                        gaps = future_research_data.get("research_gaps", [])
-                        if gaps:
-                            for gap in gaps[:5]:
-                                st.markdown(f"- {gap.get('indicator', 'N/A')}: {gap.get('context', 'N/A')[:100]}...")
-                        else:
-                            st.info("No explicit gaps detected")
-                    
-                    with col_trend:
-                        st.markdown("**Emerging Trends**")
-                        trends = future_research_data.get("emerging_trends", [])
-                        if trends:
-                            for trend in trends[:5]:
-                                st.markdown(f"- **{trend.get('topic', 'N/A')}** (relevance: {trend.get('relevance_score', 0)})")
-                        else:
-                            st.info("No emerging trends identified")
-                    
-                    st.markdown("---")
-                    collab_opps = future_research_data.get("collaboration_opportunities", [])
-                    if collab_opps:
-                        st.markdown("**Collaboration Opportunities**")
-                        for opp in collab_opps:
-                            st.markdown(f"- **{opp.get('field', 'N/A')}** ({opp.get('type', 'N/A')}): {opp.get('rationale', 'N/A')}")
-                else:
-                    st.info("Future research analysis not available for this document.")
+                st.markdown("---")
+                col_fr1, col_fr2, col_fr3 = st.columns(3)
+                
+                with col_fr1:
+                    st.markdown("**Short-term (0-6 months)**")
+                    short_term = future_research_data.get("timeline", {}).get("short_term", [])
+                    if short_term:
+                        for item in short_term:
+                            st.markdown(f'<div class="success-card">{item}</div>', unsafe_allow_html=True)
+                    else:
+                        st.info("No short-term directions identified")
+                
+                with col_fr2:
+                    st.markdown("**Medium-term (6-18 months)**")
+                    medium_term = future_research_data.get("timeline", {}).get("medium_term", [])
+                    if medium_term:
+                        for item in medium_term:
+                            st.markdown(f'<div class="warning-card">{item}</div>', unsafe_allow_html=True)
+                    else:
+                        st.info("No medium-term directions identified")
+                
+                with col_fr3:
+                    st.markdown("**Long-term (18+ months)**")
+                    long_term = future_research_data.get("timeline", {}).get("long_term", [])
+                    if long_term:
+                        for item in long_term:
+                            st.markdown(f'<div style="background: #f0f9ff; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0; border-left: 3px solid #0ea5e9;">{item}</div>', unsafe_allow_html=True)
+                    else:
+                        st.info("No long-term directions identified")
+                
+                st.markdown("---")
+                st.markdown("**Priority Research Directions**")
+                priority_dirs = future_research_data.get("priority_directions", [])
+                if priority_dirs:
+                    for i, pdir in enumerate(priority_dirs, 1):
+                        with st.expander(f"{i}. {pdir.get('direction', 'N/A')}"):
+                            st.markdown(f"**Rationale:** {pdir.get('rationale', 'N/A')}")
+                            st.markdown(f"**Timeline:** {pdir.get('timeline', 'N/A')}")
+                            st.markdown(f"**Difficulty:** {pdir.get('difficulty', 'N/A')}")
+                
+                st.markdown("---")
+                research_questions = future_research_data.get("research_questions", [])
+                if research_questions:
+                    st.markdown("**Suggested Research Questions**")
+                    for i, rq in enumerate(research_questions, 1):
+                        st.markdown(f"{i}. {rq}")
+                
+                st.markdown("---")
+                col_gap, col_trend = st.columns(2)
+                
+                with col_gap:
+                    st.markdown("**Identified Research Gaps**")
+                    gaps = future_research_data.get("research_gaps", [])
+                    if gaps:
+                        for gap in gaps[:5]:
+                            st.markdown(f"- {gap.get('indicator', 'N/A')}: {gap.get('context', 'N/A')[:100]}...")
+                    else:
+                        st.info("No explicit gaps detected")
+                
+                with col_trend:
+                    st.markdown("**Emerging Trends**")
+                    trends = future_research_data.get("emerging_trends", [])
+                    if trends:
+                        for trend in trends[:5]:
+                            st.markdown(f"- **{trend.get('topic', 'N/A')}** (relevance: {trend.get('relevance_score', 0)})")
+                    else:
+                        st.info("No emerging trends identified")
+                
+                st.markdown("---")
+                collab_opps = future_research_data.get("collaboration_opportunities", [])
+                if collab_opps:
+                    st.markdown("**Collaboration Opportunities**")
+                    for opp in collab_opps:
+                        st.markdown(f"- **{opp.get('field', 'N/A')}** ({opp.get('type', 'N/A')}): {opp.get('rationale', 'N/A')}")
+            else:
+                st.info("Future research analysis not available for this document.")
 
-        with tabs[tab_index]:
-            tab_index += 1
+        elif selected_view == "Plagiarism Analysis":
             st.markdown("##### Plagiarism Detection")
             st.markdown("Analyze document for self-similarity, paraphrasing, and potential plagiarism issues.")
             
@@ -884,6 +879,8 @@ def render_dashboard():
             
             else:
                 st.info("Click the button above to run plagiarism detection on this document.")
+        
+        st.markdown('</div>', unsafe_allow_html=True) # Close selected_view div
 
     elif current_analysis and not current_analysis.get("results"):
         st.info(f"Viewing saved analysis for: **{current_analysis['filename']}**")
@@ -906,8 +903,41 @@ def render_dashboard():
                     """, unsafe_allow_html=True)
 
     else:
-        st.markdown("#### Upload a research paper to analyze")
-        # Enforce 10MB limit for Render free-tier stability
+        st.markdown("""
+        <div class="hero-section">
+            <div class="hero-title">Paper<span>IQ</span></div>
+            <div class="hero-subtitle">
+                AI-powered research paper analysis. Upload your paper to get instant quality scoring,
+                structural analysis, plagiarism detection, and actionable insights.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+            <div class="feature-card" style="background: linear-gradient(135deg, #312e81 0%, #4338ca 100%); border: 1px solid rgba(99,102,241,0.3); border-radius: 16px; padding: 1.25rem; text-align: center;">
+                <div class="feature-icon" style="font-size: 1.5rem;">&#128202;</div>
+                <div class="feature-title" style="color: #e0e7ff; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.4rem;">11 Quality Metrics</div>
+                <div class="feature-desc" style="color: #a5b4fc; font-size: 0.8rem;">Language, coherence, reasoning, readability and more</div>
+            </div>
+            <div class="feature-card" style="background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%); border: 1px solid rgba(139,92,246,0.3); border-radius: 16px; padding: 1.25rem; text-align: center;">
+                <div class="feature-icon" style="font-size: 1.5rem;">&#128269;</div>
+                <div class="feature-title" style="color: #ede9fe; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.4rem;">Plagiarism Detection</div>
+                <div class="feature-desc" style="color: #c4b5fd; font-size: 0.8rem;">Self-similarity and paraphrase scanning</div>
+            </div>
+            <div class="feature-card" style="background: linear-gradient(135deg, #065f46 0%, #059669 100%); border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 1.25rem; text-align: center;">
+                <div class="feature-icon" style="font-size: 1.5rem;">&#128209;</div>
+                <div class="feature-title" style="color: #d1fae5; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.4rem;">Multi-doc Compare</div>
+                <div class="feature-desc" style="color: #a7f3d0; font-size: 0.8rem;">Side-by-side analysis of up to 5 papers</div>
+            </div>
+            <div class="feature-card" style="background: linear-gradient(135deg, #92400e 0%, #d97706 100%); border: 1px solid rgba(245,158,11,0.3); border-radius: 16px; padding: 1.25rem; text-align: center;">
+                <div class="feature-icon" style="font-size: 1.5rem;">&#128640;</div>
+                <div class="feature-title" style="color: #fef3c7; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.4rem;">Export Reports</div>
+                <div class="feature-desc" style="color: #fde68a; font-size: 0.8rem;">PDF, JSON, CSV, LaTeX and DOCX</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
         uploaded_file = st.file_uploader("Upload Document (Max 10MB)", type=["pdf", "docx", "txt"])
 
         if uploaded_file:
@@ -1070,19 +1100,30 @@ def render_compare_page():
 
     st.markdown("---")
     st.markdown("##### Overall Rankings")
+    st.markdown('<div class="animate-fade-in delay-1">', unsafe_allow_html=True)
     rankings = comparison.get("rankings", [])
     for i, rank in enumerate(rankings, 1):
         score = rank.get("composite_score", 0)
-        st.markdown(f"**{i}.** {rank['filename']} — Composite: **{score:.1f}/100**")
+        st.markdown(f"""
+        <div class="card-elevated" style="padding: 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-weight: 600; font-size: 1.05rem;">
+                <span style="color: #64748b; margin-right: 0.5rem;">#{i}</span> {rank['filename']}
+            </div>
+            <div class="stat-value accent" style="font-size: 1.4rem;">{score:.1f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("##### Key Insights")
+    st.markdown('<div class="metric-grid animate-fade-in delay-2">', unsafe_allow_html=True)
     insights = comparison.get("insights", [])
     if insights:
         for insight in insights:
-            st.info(insight)
+            st.markdown(f'<div class="info-card" style="margin:0;">{insight}</div>', unsafe_allow_html=True)
     else:
-        st.info("No significant performance gaps detected between documents.")
+        st.markdown('<div class="info-card" style="margin:0;">No significant performance gaps detected between documents.</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     universal_kws = comparison.get("universal_keywords", [])
     if universal_kws:
@@ -1180,6 +1221,7 @@ def render_compare_page():
             st.markdown("##### Cross-Paper Structural Relations")
             st.info("Documents are in the same overall domain but do not share enough specific overlapping methodology/themes for cross-component mapping.")
 
+        st.markdown('<div class="animate-fade-in delay-3">', unsafe_allow_html=True)
         st.markdown("---")
         st.markdown("**Per-Metric Delta**")
         metric_deltas = pair.get("metric_deltas", {})
@@ -1236,6 +1278,7 @@ def render_compare_page():
 
         st.markdown(f"**Domain Agreement:** "
                     f"{'Same domain (' + pair.get('domain_a', '') + ')' if pair.get('domain_agreement') else pair.get('domain_a', 'N/A') + ' vs ' + pair.get('domain_b', 'N/A')}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_arxiv_page():

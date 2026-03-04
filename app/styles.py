@@ -4,28 +4,129 @@ def get_app_styles():
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
         html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        @keyframes slideUpFade {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .animate-fade-in {
+            animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        .main .block-container {
+            padding-top: 2rem !important;
         }
 
         .main-header {
-            font-size: 3rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-align: center;
-            padding: 1.5rem 0;
-            margin-bottom: 2rem;
-            letter-spacing: -1px;
+            font-size: 3rem !important;
+            font-weight: 800 !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+            text-align: center !important;
+            padding: 1rem 0 !important;
+            margin-bottom: 0.5rem !important;
+            letter-spacing: -1px !important;
         }
 
         .sub-header {
-            font-size: 1.2rem;
-            font-weight: 500;
-            color: #64748b;
-            text-align: center;
+            font-size: 1.1rem !important;
+            font-weight: 400 !important;
+            color: #94a3b8 !important;
+            text-align: center !important;
+            margin-bottom: 2rem !important;
+        }
+
+        .hero-section {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 100%);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
             margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -10%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .hero-title {
+            font-size: 2.8rem !important;
+            font-weight: 800 !important;
+            color: #ffffff !important;
+            margin-bottom: 0.5rem !important;
+            letter-spacing: -1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-title span {
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: #94a3b8 !important;
+            margin-bottom: 0;
+            position: relative;
+            z-index: 1;
+            line-height: 1.6;
+        }
+
+        .upload-card {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            border: 2px dashed #6366f1;
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1.5rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .upload-card:hover {
+            border-color: #818cf8;
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);
         }
 
         .section-header {
@@ -38,29 +139,36 @@ def get_app_styles():
             border-bottom: 2px solid #e2e8f0;
         }
 
-        .stExpander {
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            margin-bottom: 0.75rem;
-            transition: all 0.2s ease;
+        .card-elevated {
             background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            color: #1e293b !important;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e2e8f0;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .card-elevated:hover {
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+            transform: translateY(-3px);
+            border-color: #667eea;
+        }
+
+        .stExpander {
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            margin-bottom: 0.75rem !important;
+            transition: all 0.2s ease;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
         }
         .stExpander summary p {
             color: #1e293b !important;
             font-weight: 600 !important;
         }
         .stExpander:hover {
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border-color: #667eea;
-        }
-
-        .upload-section {
-            background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
-            padding: 2.5rem;
-            border-radius: 16px;
-            margin-bottom: 2rem;
-            border: 2px dashed #667eea;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+            border-color: #667eea !important;
         }
 
         .keyword-chip {
@@ -94,13 +202,13 @@ def get_app_styles():
             border-radius: 16px;
             padding: 1.25rem 1.5rem;
             margin-bottom: 0.75rem;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
             color: #1e293b !important;
         }
         .stat-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.18);
             border-color: #667eea;
         }
         .stat-label {
@@ -119,11 +227,17 @@ def get_app_styles():
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+        .stat-value.accent {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
         .domain-badge {
             display: inline-block;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            color: white !important;
             padding: 0.5rem 1.5rem;
             border-radius: 25px;
             font-size: 0.95rem;
@@ -167,7 +281,7 @@ def get_app_styles():
         .score-pill {
             display: inline-block;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            color: white !important;
             padding: 0.2rem 0.75rem;
             border-radius: 15px;
             font-size: 0.8rem;
@@ -185,123 +299,87 @@ def get_app_styles():
             border: 1px solid #e2e8f0;
         }
 
-        .stButton button {
-            width: 100%;
-            border-radius: 10px;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            padding: 0.75rem 1.5rem;
+        .stButton > button {
+            width: 100% !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border: none !important;
+            padding: 0.6rem 1.5rem !important;
         }
-        .stButton button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        .stButton > button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4) !important;
         }
 
         section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%) !important;
         }
-        section[data-testid="stSidebar"] .stMarkdown {
-            color: #e2e8f0;
+        section[data-testid="stSidebar"] .stMarkdown,
+        section[data-testid="stSidebar"] .stMarkdown p,
+        section[data-testid="stSidebar"] .stMarkdown h1,
+        section[data-testid="stSidebar"] .stMarkdown h2,
+        section[data-testid="stSidebar"] .stMarkdown h3 {
+            color: #e2e8f0 !important;
         }
-
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 12px;
+        section[data-testid="stSidebar"] hr {
+            border-color: rgba(255,255,255,0.1) !important;
         }
-        .stTabs [data-baseweb="tab"] {
-            border-radius: 10px 10px 0 0;
-            font-weight: 600;
-            padding: 0.75rem 1.5rem;
+        section[data-testid="stSidebar"] .stButton > button {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
         }
-
-        .progress-container {
-            background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            border: 1px solid #c7d2fe;
+        section[data-testid="stSidebar"] .stButton > button:hover {
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.5) !important;
         }
 
-        .progress-bar {
-            width: 100%;
-            height: 14px;
-            background: #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 0.75rem 0;
+        div[role='radiogroup'] {
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%) !important;
+            padding: 6px !important;
+            border-radius: 14px !important;
+            display: inline-flex !important;
+            margin-bottom: 1.5rem !important;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15) !important;
         }
 
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-            transition: width 0.4s ease;
+        div[role='radiogroup'] > label {
+            background: transparent !important;
+            border-radius: 10px !important;
+            padding: 0.45rem 1.1rem !important;
+            margin: 0 !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            border: none !important;
         }
 
-        .progress-text {
-            font-size: 0.9rem;
-            color: #3730a3;
-            font-weight: 600;
-            margin-top: 0.5rem;
+        div[role='radiogroup'] > label:hover {
+            background: rgba(255, 255, 255, 0.5) !important;
         }
 
-        .step-indicator {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 1.5rem 0;
+        div[role='radiogroup'] > label[data-checked="true"] {
+            background: #ffffff !important;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2) !important;
         }
 
-        .step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex: 1;
-            position: relative;
+        div[role='radiogroup'] > label > div:first-child {
+            display: none !important;
         }
 
-        .step-number {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-            color: #64748b;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 0.5rem;
-            transition: all 0.3s ease;
+        div[role='radiogroup'] > label[data-checked="true"] p {
+            color: #4f46e5 !important;
+            font-weight: 700 !important;
         }
 
-        .step.active .step-number {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-            transform: scale(1.1);
-        }
-
-        .step.completed .step-number {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }
-
-        .step-label {
-            font-size: 0.75rem;
-            color: #64748b;
-            text-align: center;
-            max-width: 90px;
-        }
-
-        .step.active .step-label {
-            color: #3730a3;
-            font-weight: 700;
-        }
-
-        .step.completed .step-label {
-            color: #059669;
+        div[role='radiogroup'] p {
+            font-size: 0.9rem !important;
+            color: #3730a3 !important;
+            margin: 0 !important;
+            font-weight: 500 !important;
         }
 
         .section-score-card {
@@ -407,6 +485,16 @@ def get_app_styles():
             color: #166534 !important;
         }
 
+        .info-card {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 1px solid #93c5fd;
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-left: 4px solid #3b82f6;
+            color: #1e40af !important;
+        }
+
         .metric-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -447,6 +535,66 @@ def get_app_styles():
             background: #f8fafc;
         }
 
+        .progress-container {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid #c7d2fe;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 14px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0.75rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: width 0.4s ease;
+        }
+
+        .progress-text {
+            font-size: 0.9rem;
+            color: #3730a3;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .feature-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.2);
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .feature-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+        .feature-desc {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+
         .stTextArea label {
             font-weight: 600;
             color: #1e293b;
@@ -456,8 +604,26 @@ def get_app_styles():
             color: #1e293b !important;
             border: 1px solid #e2e8f0 !important;
         }
-        .stExpander .stTextArea textarea {
-            background-color: #f8fafc !important;
+
+        button[data-testid="stSidebarCollapseButton"],
+        button[data-testid="collapsedControl"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 0.4rem !important;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+            transition: all 0.2s ease !important;
+        }
+        button[data-testid="stSidebarCollapseButton"]:hover,
+        button[data-testid="collapsedControl"]:hover {
+            transform: scale(1.1) !important;
+            box-shadow: 0 6px 18px rgba(102, 126, 234, 0.5) !important;
+        }
+        button[data-testid="stSidebarCollapseButton"] svg,
+        button[data-testid="collapsedControl"] svg {
+            fill: white !important;
+            stroke: white !important;
         }
     </style>
     """
