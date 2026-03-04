@@ -122,30 +122,39 @@ def detect_copied_sections(text: str, min_length: int = 100) -> List[Dict]:
     sentences = split_into_sentences(text)
     copied_sections = []
     
+    # Limit to first 100 sentences to avoid O(n²) explosion
+    sentences = sentences[:100]
+    
+    # Build all 2-sentence blocks first
+    blocks = []
     for i in range(len(sentences) - 1):
-        for j in range(i + 2, len(sentences)):
-            section_1 = ' '.join(sentences[i:i+2])
-            section_2 = ' '.join(sentences[j:j+2])
-            
-            if len(section_1) < min_length or len(section_2) < min_length:
-                continue
-            
-            try:
-                vectorizer = TfidfVectorizer(stop_words='english')
-                tfidf = vectorizer.fit_transform([section_1, section_2])
-                similarity = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
+        block = ' '.join(sentences[i:i+2])
+        if len(block) >= min_length:
+            blocks.append((i, block))
+    
+    if len(blocks) < 2:
+        return []
+    
+    try:
+        # Single vectorizer for all blocks
+        vectorizer = TfidfVectorizer(stop_words='english')
+        tfidf = vectorizer.fit_transform([b[1] for b in blocks])
+        
+        for i in range(len(blocks)):
+            for j in range(i + 2, len(blocks)):
+                similarity = cosine_similarity(tfidf[i:i+1], tfidf[j:j+1])[0][0]
                 
                 if similarity >= 0.85:
                     copied_sections.append({
-                        'section_1_start': i,
-                        'section_2_start': j,
-                        'section_1': section_1[:300],
-                        'section_2': section_2[:300],
+                        'section_1_start': blocks[i][0],
+                        'section_2_start': blocks[j][0],
+                        'section_1': blocks[i][1][:300],
+                        'section_2': blocks[j][1][:300],
                         'similarity': round(float(similarity), 4),
                         'type': 'copied_section'
                     })
-            except:
-                continue
+    except Exception:
+        pass
     
     return copied_sections
 

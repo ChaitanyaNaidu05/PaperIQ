@@ -1,8 +1,12 @@
 import sqlite3
 import json
 import logging
+import os
 
-DB_PATH = "data/paperiq.db"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_DIR = os.path.join(BASE_DIR, "data")
+os.makedirs(DB_DIR, exist_ok=True)
+DB_PATH = os.path.join(DB_DIR, "paperiq.db")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

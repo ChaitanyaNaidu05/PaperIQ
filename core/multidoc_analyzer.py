@@ -123,6 +123,38 @@ def _compare_pair(a: Dict, b: Dict) -> Dict:
     dom_a = a.get("domain", "Unknown")
     dom_b = b.get("domain", "Unknown")
 
+    cross_components = {}
+    if dom_a == dom_b and kw_analysis.get("overlap_percent", 0) > 20:
+        sections_dict_a = {k.lower(): v for k, v in a.get("sections_data", {}).items() if isinstance(v, dict) and "content" in v}
+        sections_dict_b = {k.lower(): v for k, v in b.get("sections_data", {}).items() if isinstance(v, dict) and "content" in v}
+        
+        shared_keys = set(sections_dict_a.keys()) & set(sections_dict_b.keys())
+        target_sections = ["abstract", "introduction", "method", "results", "conclusion"]
+        
+        # Stop words for naive common-term extraction if NLTK/spacy isn't loaded
+        stop_words = {"the", "and", "of", "to", "a", "in", "is", "for", "that", "this", "on", "with", "as", "by", "an", "are", "be", "was", "were", "it", "at", "from", "or", "which", "we"}
+        
+        import re
+        for tgt in target_sections:
+            matches = [k for k in shared_keys if tgt in k]
+            if matches:
+                key = matches[0]
+                text_a_sec = sections_dict_a[key]["content"]
+                text_b_sec = sections_dict_b[key]["content"]
+                
+                if len(text_a_sec) > 50 and len(text_b_sec) > 50:
+                    sim_score = transformer_analyzer.compute_semantic_similarity(text_a_sec[:1500], text_b_sec[:1500])
+                    
+                    if sim_score >= 0.35:
+                        words_a = set(w for w in re.findall(r'\b[a-z]{5,}\b', text_a_sec.lower()) if w not in stop_words)
+                        words_b = set(w for w in re.findall(r'\b[a-z]{5,}\b', text_b_sec.lower()) if w not in stop_words)
+                        shared_terms = sorted(list(words_a & words_b))[:8]
+                        
+                        cross_components[key.title()] = {
+                            "similarity": round(sim_score * 100, 1),
+                            "shared_terms": shared_terms
+                        }
+
     return {
         "doc_a": name_a,
         "doc_b": name_b,
@@ -134,6 +166,7 @@ def _compare_pair(a: Dict, b: Dict) -> Dict:
         "domain_agreement": dom_a == dom_b,
         "strengths_a": strengths_a,
         "strengths_b": strengths_b,
+        "cross_components": cross_components,
         "section_coverage": {
             "shared": sorted(sections_a & sections_b),
             "only_in_a": sorted(sections_a - sections_b),

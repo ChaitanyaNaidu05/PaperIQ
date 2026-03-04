@@ -629,7 +629,7 @@ def extract_entities_for_analysis(text: str) -> dict:
 
 def extract_advanced_analysis(text: str, sections: dict, scores: dict, stats: dict, keywords: list, domain: str) -> dict:
     try:
-        import advanced_ml
+        from core import advanced_ml
         advanced_data = advanced_ml.run_advanced_analysis(text, sections, scores, stats, keywords, domain)
         return advanced_data
     except Exception as e:

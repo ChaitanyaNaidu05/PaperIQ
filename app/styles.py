@@ -44,6 +44,11 @@ def get_app_styles():
             margin-bottom: 0.75rem;
             transition: all 0.2s ease;
             background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            color: #1e293b !important;
+        }
+        .stExpander summary p {
+            color: #1e293b !important;
+            font-weight: 600 !important;
         }
         .stExpander:hover {
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
