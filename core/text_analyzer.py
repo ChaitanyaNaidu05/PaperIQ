@@ -72,28 +72,38 @@ DOMAIN_KEYWORDS = {
         "algorithm", "neural", "network", "machine learning", "deep learning",
         "dataset", "transformer", "convolutional", "gpu", "training",
         "inference", "classification", "regression", "software", "compiler",
-        "api", "database", "optimization", "benchmark", "backpropagation"
+        "api", "database", "optimization", "benchmark", "backpropagation",
+        "agent", "llm", "prompt", "artificial intelligence", "autonomous",
+        "multi-agent", "reasoning", "reinforcement learning", "nlp", "computer vision"
     ],
     "Biology / Medicine": [
         "protein", "gene", "cell", "dna", "rna", "enzyme", "clinical",
         "patient", "therapy", "diagnosis", "pathology", "mutation",
-        "genome", "biomarker", "antibody", "tissue", "organism", "species"
+        "genome", "biomarker", "antibody", "tissue", "organism", "species",
+        "molecular", "biomedical", "metabolic", "pharmacology"
     ],
     "Physics": [
         "quantum", "entropy", "particle", "photon", "wave", "field",
         "energy", "mass", "velocity", "momentum", "thermodynamic",
-        "relativity", "boson", "fermion", "tensor", "hamiltonian"
+        "relativity", "boson", "fermion", "tensor", "hamiltonian",
+        "astrophysics", "mechanics", "electromagnetism"
     ],
     "Economics / Finance": [
         "market", "gdp", "inflation", "fiscal", "monetary", "equilibrium",
         "demand", "supply", "trade", "portfolio", "regression", "econometric",
-        "interest rate", "capital", "welfare", "utility"
+        "interest rate", "capital", "welfare", "utility", "macroeconomics", "microeconomics"
     ],
     "Mathematics / Statistics": [
         "theorem", "proof", "lemma", "hypothesis", "variance", "distribution",
         "integral", "derivative", "convergence", "matrix", "eigenvalue",
-        "stochastic", "probability", "bayesian", "estimator"
+        "stochastic", "probability", "bayesian", "estimator", "topological", "algebraic"
     ],
+}
+
+BLACKLIST_HEADERS = {
+    "equation", "figure", "table", "page", "cont.", "continued", 
+    "author", "university", "department", "email", "abstract",
+    "key words", "keywords", "indexed terms", "doi"
 }
 
 def extract_sections(text):
@@ -105,22 +115,41 @@ def extract_sections(text):
     common_headers_lower = {h.lower() for h in CANONICAL_SECTIONS}
     common_headers_lower.update([
         "background", "framework", "approach", "implementation",
-        "evaluation", "future work", "acknowledgments", "appendix",
-        "experimental setup", "conclusions", "results and discussion"
+        "evaluation", "future work", "acknowledgments", "acknowledgements", 
+        "appendix", "experimental setup", "conclusions", "results and discussion",
+        "bibliography", "works cited"
     ])
 
     for line in lines:
         line = line.strip()
-        if not line:
+        if not line or len(line) < 3:
             continue
+            
         is_header = False
-
-        if re.match(r'^(?:\d+\.)+\d*\s+[A-Z][A-Za-z]', line) and len(line) < 80:
+        line_lower = line.lower().rstrip('.: ')
+        
+        # 1. Stricter Blacklist Check
+        # Only blacklist if it's an exact match or followed by a space/number
+        is_blacklisted = False
+        for b in BLACKLIST_HEADERS:
+            if line_lower == b or line_lower.startswith(b + " ") or line_lower.startswith(b + ":"):
+                is_blacklisted = True
+                break
+        
+        if is_blacklisted:
+            is_header = False
+        # 2. Numbered Section Heuristic
+        elif re.match(r'^(?:\d+\.)+\d*\s+[A-Z][A-Za-z]', line) and len(line) < 80:
             is_header = True
-        elif line.isupper() and 3 < len(line) < 50:
+        # 3. All-Caps Header Heuristic
+        elif line.isupper() and 4 < len(line) < 60:
+            # Descriptive all-caps or canonical all-caps
+            if " " in line or line_lower in common_headers_lower:
+                is_header = True
+        # 4. Canonical / Common Header Match
+        elif line_lower in common_headers_lower:
             is_header = True
-        elif line.lower().rstrip(':') in common_headers_lower:
-            is_header = True
+        # 5. Roman Numeral Heuristic
         elif re.match(r'^[IVXLC]+\.?\s+[A-Z]', line) and len(line) < 60:
             is_header = True
 
@@ -166,14 +195,20 @@ def classify_paper_and_method(text, sections):
     
     max_count = 0
     for ptype, keywords in paper_types.items():
-        count = sum(text_lower.count(k) for k in keywords)
+        count = 0
+        for k in keywords:
+            # Use regex for word boundary matching
+            count += len(re.findall(r'\b' + re.escape(k) + r'\b', text_lower))
         if count > max_count:
             max_count = count
             results["type"] = ptype
             
     max_count = 0
     for meth, keywords in methodologies.items():
-        count = sum(text_lower.count(k) for k in keywords)
+        count = 0
+        for k in keywords:
+            # Use regex for word boundary matching
+            count += len(re.findall(r'\b' + re.escape(k) + r'\b', text_lower))
         if count > max_count:
             max_count = count
             results["methodology"] = meth
@@ -341,11 +376,15 @@ def classify_sentence_complexity(sentences):
     }
 
 def detect_domain(text):
-    """Heuristic domain classification using keyword banks."""
+    """Heuristic domain classification using keyword banks with word boundaries."""
     text_lower = text.lower()
     domain_scores = {}
     for domain, keywords in DOMAIN_KEYWORDS.items():
-        score = sum(text_lower.count(kw) for kw in keywords)
+        score = 0
+        for kw in keywords:
+            # Use regex for word boundary matching to avoid false positives like 'generate' -> 'gene'
+            matches = re.findall(r'\b' + re.escape(kw) + r'\b', text_lower)
+            score += len(matches)
         domain_scores[domain] = score
     best = max(domain_scores, key=domain_scores.get)
     if domain_scores[best] < 3:

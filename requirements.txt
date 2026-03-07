@@ -9,3 +9,4 @@ scikit-learn
 nltk
 bcrypt
 pandas
+google-genai

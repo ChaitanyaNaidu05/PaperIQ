@@ -166,6 +166,9 @@ def get_app_styles():
             color: #1e293b !important;
             font-weight: 600 !important;
         }
+        .stExpander * {
+            color: #1e293b !important;
+        }
         .stExpander:hover {
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
             border-color: #667eea !important;
@@ -267,7 +270,7 @@ def get_app_styles():
             font-weight: 600;
         }
 
-        .summary-box {
+        .summary-box, .summary-box * {
             background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
             border: 1px solid #bae6fd;
             border-radius: 12px;
@@ -455,7 +458,7 @@ def get_app_styles():
             color: #9a3412;
         }
 
-        .insight-card {
+        .insight-card, .insight-card * {
             background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
             border: 1px solid #e9d5ff;
             border-radius: 14px;
@@ -465,7 +468,7 @@ def get_app_styles():
             color: #581c87 !important;
         }
 
-        .warning-card {
+        .warning-card, .warning-card * {
             background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
             border: 1px solid #fdba74;
             border-radius: 12px;
@@ -475,7 +478,7 @@ def get_app_styles():
             color: #9a3412 !important;
         }
 
-        .success-card {
+        .success-card, .success-card * {
             background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
             border: 1px solid #86efac;
             border-radius: 12px;
@@ -485,7 +488,7 @@ def get_app_styles():
             color: #166534 !important;
         }
 
-        .info-card {
+        .info-card, .info-card * {
             background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
             border: 1px solid #93c5fd;
             border-radius: 12px;

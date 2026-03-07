@@ -9,7 +9,9 @@ import time
 import logging
 import plotly.graph_objects as go
 
-from core import database, auth, pdf_processor, text_analyzer
+from core import database, auth, pdf_processor, text_analyzer, gemini_chat
+import importlib
+importlib.reload(gemini_chat)
 import core.multidoc_analyzer as multidoc_analyzer
 import core.arxiv_client as arxiv_client
 from app import styles
@@ -340,7 +342,7 @@ def render_dashboard():
             future_research_data.get("priority_directions")
         )
         
-        tab_names = ["Radar & Scores", "Statistics", "Structure", "Section Analysis", "Issues", "Sections", "Advanced Analysis"]
+        tab_names = ["Radar & Scores", "Chat with AI", "Statistics", "Structure", "Section Analysis", "Issues", "Sections", "Advanced Analysis"]
         
         if has_entities:
             tab_names.insert(4, "Entities")
@@ -369,6 +371,50 @@ def render_dashboard():
                 if complexity:
                     pie_fig = text_analyzer.build_complexity_pie(complexity)
                     st.plotly_chart(pie_fig, use_container_width=True)
+
+        elif selected_view == "Chat with AI":
+            st.markdown("##### Chat with PaperIQ")
+            
+            # Initialize chat history if not present
+            if "chat_history" not in st.session_state:
+                st.session_state.chat_history = []
+            
+            # Reconstruct the document context
+            context_text = ""
+            for section_name, content in current_analysis.get("sections", {}).items():
+                if isinstance(content, dict):
+                    context_text += content.get("content", "") + "\n\n"
+                else:
+                    context_text += str(content) + "\n\n"
+            
+            # Display existing chat history
+            for message in st.session_state.chat_history:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+                    
+            # Chat input
+            if prompt := st.chat_input("Ask a question about this paper..."):
+                # Display user prompt
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                
+                # Append to history
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                
+                # Get response
+                with st.spinner("PaperIQ is thinking..."):
+                    response = gemini_chat.get_chat_response(
+                        context=context_text,
+                        chat_history=st.session_state.chat_history[:-1], # pass history excluding current prompt
+                        user_message=prompt
+                    )
+                
+                # Display model response
+                with st.chat_message("assistant"):
+                    st.markdown(response)
+                    
+                # Append assistant response to history
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
 
         elif selected_view == "Statistics":
             stats = results["stats"]

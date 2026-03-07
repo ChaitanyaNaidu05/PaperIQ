@@ -37,19 +37,21 @@ def compute_advanced_domain_score(text: str, domain: str) -> float:
             "dataset", "transformer", "convolutional", "gpu", "training",
             "inference", "classification", "regression", "software", "compiler",
             "api", "database", "optimization", "benchmark", "backpropagation",
-            "architecture", "model", "prediction", "feature", "embedding"
+            "architecture", "model", "prediction", "feature", "embedding",
+            "agent", "llm", "prompt", "artificial intelligence", "autonomous",
+            "multi-agent", "reasoning", "reinforcement learning", "nlp"
         ],
         "Biology / Medicine": [
             "protein", "gene", "cell", "dna", "rna", "enzyme", "clinical",
             "patient", "therapy", "diagnosis", "pathology", "mutation",
             "genome", "biomarker", "antibody", "tissue", "organism", "species",
-            "expression", "sequencing", "pathway", "receptor"
+            "expression", "sequencing", "pathway", "receptor", "molecular"
         ],
         "Physics": [
             "quantum", "entropy", "particle", "photon", "wave", "field",
             "energy", "mass", "velocity", "momentum", "thermodynamic",
             "relativity", "boson", "fermion", "tensor", "hamiltonian",
-            "lagrangian", "symmetry", "interaction", "coupling"
+            "lagrangian", "symmetry", "interaction", "coupling", "astrophysics"
         ],
         "Economics / Finance": [
             "market", "gdp", "inflation", "fiscal", "monetary", "equilibrium",
@@ -66,7 +68,11 @@ def compute_advanced_domain_score(text: str, domain: str) -> float:
     text_lower = text.lower()
     keywords = domain_keywords.get(domain, [])
 
-    match_count = sum(text_lower.count(kw) for kw in keywords)
+    # Use regex for word boundary matching
+    match_count = 0
+    for kw in keywords:
+        match_count += len(re.findall(r'\b' + re.escape(kw) + r'\b', text_lower))
+        
     word_count = len(text.split())
 
     if word_count == 0:
