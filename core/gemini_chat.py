@@ -11,14 +11,18 @@ def get_client():
     """
     Initialize and return the Gemini API client.
     """
-    api_key = None
-    if "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
-    elif os.environ.get("GEMINI_API_KEY"):
-        api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
+    
+    if not api_key:
+        try:
+            if "GEMINI_API_KEY" in st.secrets:
+                api_key = st.secrets["GEMINI_API_KEY"]
+        except Exception:
+            # st.secrets might raise an error if no secrets are configured at all
+            pass
 
     if not api_key:
-        logger.error("Gemini API key not found in secrets or environment variables.")
+        logger.error("Gemini API key not found in environment variables or Streamlit secrets.")
         return None
     
     return genai.Client(api_key=api_key)
